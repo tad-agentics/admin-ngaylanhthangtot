@@ -115,13 +115,26 @@ export default function AdminDashboard() {
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                 <p className="font-medium">Lỗi dữ liệu</p>
                 <p className="mt-1">{statsError}</p>
-                <p className="mt-2 text-xs text-red-800/90">
-                  Kiểm tra đã deploy Edge Function{" "}
-                  <code className="rounded bg-red-100/80 px-1">admin-dashboard-stats</code>{" "}
-                  và secret{" "}
-                  <code className="rounded bg-red-100/80 px-1">ADMIN_EMAILS</code> trên
-                  Supabase (email admin, cách nhau bằng dấu phẩy).
-                </p>
+                {statsError.includes("FORBIDDEN") ||
+                statsError.toLowerCase().includes("not an admin") ? (
+                  <p className="mt-2 text-xs text-red-800/90 leading-relaxed">
+                    Trong Supabase → <strong>Edge Functions</strong> →{" "}
+                    <strong>Secrets</strong>, chỉnh{" "}
+                    <code className="rounded bg-red-100/80 px-1">ADMIN_EMAILS</code> để{" "}
+                    <strong>có đúng email bạn đang đăng nhập</strong> (có thể nhiều email,
+                    cách nhau bằng dấu cách, phẩy hoặc xuống dòng). Email hiện tại:{" "}
+                    <code className="rounded bg-red-100/80 px-1">{user.email ?? "—"}</code>
+                    . Lưu secret xong chỉ cần tải lại trang — không cần deploy lại function.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-red-800/90">
+                    Kiểm tra Edge Function{" "}
+                    <code className="rounded bg-red-100/80 px-1">admin-dashboard-stats</code>{" "}
+                    và secret{" "}
+                    <code className="rounded bg-red-100/80 px-1">ADMIN_EMAILS</code> trên
+                    Supabase.
+                  </p>
+                )}
               </div>
             ) : null}
 

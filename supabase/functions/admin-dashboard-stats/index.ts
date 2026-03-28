@@ -27,10 +27,11 @@ function json(body: unknown, status = 200): Response {
 }
 
 function parseAdminEmails(raw: string | undefined): string[] {
-  return (raw ?? "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
+  const s = raw ?? "";
+  return s
+    .split(/[\s,;]+/u)
+    .map((p) => p.trim().toLowerCase())
+    .filter((p) => p.includes("@"));
 }
 
 async function fetchAllPaidOrders(
@@ -117,7 +118,15 @@ Deno.serve(async (req) => {
   }
   const email = userData.user.email.toLowerCase();
   if (!allow.includes(email)) {
-    return json({ error: { code: "FORBIDDEN", message: "Not an admin" } }, 403);
+    return json(
+      {
+        error: {
+          code: "FORBIDDEN",
+          message: `Not an admin (signed in as ${email}). Add this exact address to Edge secret ADMIN_EMAILS.`,
+        },
+      },
+      403,
+    );
   }
 
   const admin = createClient(supabaseUrl, serviceKey, {

@@ -7,6 +7,14 @@
 #   supabase functions deploy admin-dashboard-stats
 #   supabase functions deploy admin-data
 #   supabase functions deploy admin-config
+#   supabase functions deploy admin-user-actions
+# RPC admin_grant_credits (nạp lượng atomic):
+#   File: supabase/migrations/20260328120000_admin_grant_credits.sql
+#   — Nếu project đã có chuỗi migration từ repo *app user*, KHÔNG chạy
+#     `supabase db push` từ repo admin (CLI báo "Remote migration versions not found…").
+#   — Cách an toàn: Supabase Dashboard → SQL Editor → dán và chạy toàn bộ file SQL
+#     trên (CREATE OR REPLACE … idempotent).
+#   — Hoặc copy file migration đó vào repo đang làm `db push` thật sự rồi push từ đó.
 
 project_id = "link-with-supabase-cli"
 
@@ -17,4 +25,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-config]
+verify_jwt = false
+
+[functions.admin-user-actions]
 verify_jwt = false

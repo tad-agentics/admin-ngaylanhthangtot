@@ -15,21 +15,8 @@ const corsHeaders = {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
-/** Columns admins may change on feature_credit_costs (add to match your schema). */
-const FEATURE_CREDIT_COSTS_PATCH = new Set([
-  "feature_key",
-  "credit_cost",
-  "credits_cost",
-  "credits",
-  "label",
-  "name",
-  "description",
-  "is_active",
-  "active",
-  "sort_order",
-  "display_order",
-  "metadata",
-]);
+/** feature_credit_costs: chỉ cho phép đổi giá lượng (không đổi feature_key / metadata / …). */
+const FEATURE_CREDIT_COSTS_PATCH = new Set(["credit_cost"]);
 
 /** Columns admins may change on app_config. */
 const APP_CONFIG_PATCH = new Set([

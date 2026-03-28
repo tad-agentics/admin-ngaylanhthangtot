@@ -345,6 +345,18 @@ export default function AdminDashboard() {
                     queryKey: adminKeys.appConfig(),
                   });
                 }}
+                currentUserId={user.id}
+                onUsersMutated={() => {
+                  void queryClient.invalidateQueries({
+                    queryKey: adminKeys.profiles(),
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: adminKeys.creditLedger(),
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: adminKeys.dashboardStats(),
+                  });
+                }}
               />
             )}
           </div>

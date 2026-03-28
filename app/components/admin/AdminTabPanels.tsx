@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ConfigRowsEditor } from "~/components/admin/ConfigRowsEditor";
+import { UsersAdminPanel } from "~/components/admin/UsersAdminPanel";
 import type {
   AdminLedgerRow,
   AdminPaymentRow,
@@ -76,6 +77,8 @@ type AdminTabPanelsProps = {
   appConfig: Record<string, unknown>[] | null;
   reportsStats: AdminDashboardPayload | null;
   onConfigSaved?: () => void;
+  currentUserId: string;
+  onUsersMutated?: () => void;
 };
 
 export function AdminTabPanels({
@@ -90,6 +93,8 @@ export function AdminTabPanels({
   appConfig,
   reportsStats,
   onConfigSaved,
+  currentUserId,
+  onUsersMutated,
 }: AdminTabPanelsProps) {
   const edgeHint = (
     <p className="mt-4 text-xs text-admin-text-secondary">
@@ -144,47 +149,11 @@ export function AdminTabPanels({
 
   if (activeNav === "users" && profiles) {
     return (
-      <div className="space-y-2">
-        <p className="text-sm text-admin-text-secondary">
-          Tối đa 100 hồ sơ mới nhất (sắp xếp theo ngày tạo).
-        </p>
-        <TableWrap>
-          <thead>
-            <tr>
-              <Th>Hồ sơ</Th>
-              <Th>Email</Th>
-              <Th>Tên</Th>
-              <Th>Lượng</Th>
-              <Th>Gói đến</Th>
-              <Th>Tạo</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {profiles.map((p) => (
-              <tr key={p.id} className="hover:bg-black/[0.02]">
-                <Td className="font-mono text-xs" title={p.id}>
-                  {shortId(p.id)}
-                </Td>
-                <Td>{p.email ?? "—"}</Td>
-                <Td>{p.display_name ?? "—"}</Td>
-                <Td className="tabular-nums">{p.credits_balance ?? "—"}</Td>
-                <Td className="text-xs">
-                  {p.subscription_expires_at
-                    ? formatDt(p.subscription_expires_at)
-                    : "—"}
-                </Td>
-                <Td className="whitespace-nowrap text-xs">
-                  {formatDt(p.created_at)}
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </TableWrap>
-        {profiles.length === 0 ? (
-          <p className="text-sm text-admin-text-secondary">Chưa có người dùng.</p>
-        ) : null}
-        {edgeHint}
-      </div>
+      <UsersAdminPanel
+        profiles={profiles}
+        currentUserId={currentUserId}
+        onMutateSuccess={() => onUsersMutated?.()}
+      />
     );
   }
 
@@ -343,16 +312,11 @@ export function AdminTabPanels({
     return (
       <div className="space-y-3">
         <p className="text-sm text-admin-text-secondary">
-          Sửa từng dòng rồi bấm <strong className="font-medium">Lưu thay đổi</strong>.
-          Ghi xuống DB qua Edge Function{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>{" "}
-          (JWT + <code className="rounded bg-admin-canvas px-1 text-[11px]">ADMIN_EMAILS</code>
-          ). Chỉ các cột trong allowlist trên function mới được cập nhật — nếu thiếu cột,
-          bổ sung trong{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">
-            supabase/functions/admin-config/index.ts
-          </code>
-          .
+          Chỉ được sửa <strong className="font-medium text-foreground">credit_cost</strong>.{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">feature_key</code> và các
+          cột khác chỉ đọc. Lưu qua{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code> (chỉ patch{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">credit_cost</code>).
         </p>
         <ConfigRowsEditor
           table="feature_credit_costs"
@@ -414,6 +378,10 @@ export function AdminTabPanels({
           <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-data</code>{" "}
           và{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>
+          ,{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">
+            admin-user-actions
+          </code>
           .
         </p>
       </div>

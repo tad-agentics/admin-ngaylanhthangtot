@@ -6,6 +6,9 @@ import {
 } from "~/lib/admin-config";
 import { cn } from "~/lib/utils";
 
+/** Giá tính năng: admin chỉ sửa credit_cost; feature_key và cột khách chỉ đọc. */
+const FEATURE_CREDIT_COSTS_EDITABLE = new Set(["credit_cost"]);
+
 const READONLY_KEYS = new Set([
   "id",
   "created_at",
@@ -51,6 +54,25 @@ function parseJsonField(text: string): unknown {
   const t = text.trim();
   if (t === "") return null;
   return JSON.parse(t) as unknown;
+}
+
+function isEditableConfigKey(table: AdminConfigTable, key: string): boolean {
+  if (table === "feature_credit_costs") {
+    return FEATURE_CREDIT_COSTS_EDITABLE.has(key);
+  }
+  return true;
+}
+
+function formatReadonlyValue(val: unknown): string {
+  if (val === null || val === undefined) return "—";
+  if (typeof val === "object") {
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return String(val);
+    }
+  }
+  return String(val);
 }
 
 type EditableRowProps = {
@@ -107,6 +129,7 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
 
   const hasChanges = useMemo(() => {
     for (const k of keys) {
+      if (!isEditableConfigKey(table, k)) continue;
       if (isJsonField(k, row[k])) {
         let parsed: unknown;
         try {
@@ -120,7 +143,7 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
       }
     }
     return false;
-  }, [keys, row, draft, jsonTexts]);
+  }, [keys, row, draft, jsonTexts, table]);
 
   const save = useCallback(async () => {
     setMessage(null);
@@ -129,6 +152,7 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
 
     try {
       for (const k of keys) {
+        if (!isEditableConfigKey(table, k)) continue;
         if (isJsonField(k, row[k])) {
           const raw = jsonTexts[k] ?? "";
           let parsed: unknown;
@@ -186,6 +210,9 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
     }
   }, [keys, row, draft, jsonTexts, table, id, onSaved]);
 
+  const missingCreditCost =
+    table === "feature_credit_costs" && !("credit_cost" in row);
+
   return (
     <div className="space-y-3 rounded-xl border border-admin-border-subtle bg-admin-card/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -206,64 +233,83 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
           {saving ? "Đang lưu…" : "Lưu thay đổi"}
         </button>
       </div>
+      {missingCreditCost ? (
+        <p className="text-xs text-amber-800">
+          Bản ghi không có cột{" "}
+          <code className="rounded bg-amber-100/80 px-1">credit_cost</code> — kiểm tra
+          schema hoặc đổi tên cột trong code.
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        {keys.map((k) => (
-          <label key={k} className="block space-y-1">
-            <span className="text-xs font-medium text-admin-text-secondary">
-              {k}
-            </span>
-            {isJsonField(k, row[k]) ? (
-              <textarea
-                value={jsonTexts[k] ?? ""}
-                onChange={(e) =>
-                  setJsonTexts((prev) => ({ ...prev, [k]: e.target.value }))
-                }
-                rows={6}
-                spellCheck={false}
-                className="w-full rounded-lg border border-admin-border-subtle bg-background px-2 py-1.5 font-mono text-xs"
-              />
-            ) : isBoolField(k, row[k]) ? (
-              <input
-                type="checkbox"
-                checked={Boolean(draft[k])}
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, [k]: e.target.checked }))
-                }
-                className="mt-1 size-4 rounded border-admin-border-subtle"
-              />
-            ) : isNumberField(k, row[k]) ? (
-              <input
-                type="number"
-                value={
-                  draft[k] === null || draft[k] === undefined
-                    ? ""
-                    : String(draft[k] as number)
-                }
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setDraft((prev) => ({
-                    ...prev,
-                    [k]: v === "" ? null : Number(v),
-                  }));
-                }}
-                className="w-full rounded-lg border border-admin-border-subtle bg-background px-2 py-1.5 text-sm tabular-nums"
-              />
-            ) : (
-              <input
-                type="text"
-                value={
-                  draft[k] === null || draft[k] === undefined
-                    ? ""
-                    : String(draft[k] as string)
-                }
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, [k]: e.target.value }))
-                }
-                className="w-full rounded-lg border border-admin-border-subtle bg-background px-2 py-1.5 text-sm"
-              />
-            )}
-          </label>
-        ))}
+        {keys.map((k) => {
+          const readOnly = !isEditableConfigKey(table, k);
+          return (
+            <label key={k} className="block space-y-1">
+              <span className="text-xs font-medium text-admin-text-secondary">
+                {k}
+                {readOnly ? (
+                  <span className="ml-1 font-normal text-admin-text-secondary/70">
+                    (chỉ đọc)
+                  </span>
+                ) : null}
+              </span>
+              {readOnly ? (
+                <div className="rounded-lg border border-admin-border-subtle bg-admin-canvas/50 px-2 py-1.5 text-sm text-foreground">
+                  {formatReadonlyValue(row[k])}
+                </div>
+              ) : isJsonField(k, row[k]) ? (
+                <textarea
+                  value={jsonTexts[k] ?? ""}
+                  onChange={(e) =>
+                    setJsonTexts((prev) => ({ ...prev, [k]: e.target.value }))
+                  }
+                  rows={6}
+                  spellCheck={false}
+                  className="w-full rounded-lg border border-admin-border-subtle bg-background px-2 py-1.5 font-mono text-xs"
+                />
+              ) : isBoolField(k, row[k]) ? (
+                <input
+                  type="checkbox"
+                  checked={Boolean(draft[k])}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, [k]: e.target.checked }))
+                  }
+                  className="mt-1 size-4 rounded border-admin-border-subtle"
+                />
+              ) : isNumberField(k, row[k]) ? (
+                <input
+                  type="number"
+                  value={
+                    draft[k] === null || draft[k] === undefined
+                      ? ""
+                      : String(draft[k] as number)
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDraft((prev) => ({
+                      ...prev,
+                      [k]: v === "" ? null : Number(v),
+                    }));
+                  }}
+                  className="w-full rounded-lg border border-admin-border-subtle bg-background px-2 py-1.5 text-sm tabular-nums"
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={
+                    draft[k] === null || draft[k] === undefined
+                      ? ""
+                      : String(draft[k] as string)
+                  }
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, [k]: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-admin-border-subtle bg-background px-2 py-1.5 text-sm"
+                />
+              )}
+            </label>
+          );
+        })}
       </div>
       {error ? (
         <p className="text-xs text-red-700">{error}</p>

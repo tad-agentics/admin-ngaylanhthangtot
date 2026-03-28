@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
   Links,
@@ -50,9 +52,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 60 * 1000,
+            gcTime: 2 * 60 * 60 * 1000,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
+
   return (
     <AuthProvider>
-      <Outlet />
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
     </AuthProvider>
   );
 }

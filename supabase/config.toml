@@ -6,6 +6,7 @@
 #   supabase secrets set ADMIN_EMAILS=admin@example.com
 #   supabase functions deploy admin-dashboard-stats
 #   supabase functions deploy admin-data
+#   supabase functions deploy admin-config
 
 project_id = "link-with-supabase-cli"
 
@@ -13,4 +14,7 @@ project_id = "link-with-supabase-cli"
 verify_jwt = false
 
 [functions.admin-data]
+verify_jwt = false
+
+[functions.admin-config]
 verify_jwt = false

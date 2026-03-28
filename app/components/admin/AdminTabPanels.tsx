@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ConfigRowsEditor } from "~/components/admin/ConfigRowsEditor";
 import type {
   AdminLedgerRow,
   AdminPaymentRow,
@@ -31,12 +32,15 @@ function Th({ children }: { children: ReactNode }) {
 function Td({
   children,
   className = "",
+  title,
 }: {
   children: ReactNode;
   className?: string;
+  title?: string;
 }) {
   return (
     <td
+      title={title}
       className={`border-b border-admin-border-subtle/80 px-3 py-2.5 text-foreground ${className}`}
     >
       {children}
@@ -60,43 +64,6 @@ function formatDt(iso: string) {
   }
 }
 
-function DynamicConfigTable({ rows }: { rows: Record<string, unknown>[] }) {
-  if (rows.length === 0) {
-    return (
-      <p className="text-sm text-admin-text-secondary">Chưa có bản ghi.</p>
-    );
-  }
-  const keys = Object.keys(rows[0] as object).sort();
-  return (
-    <TableWrap>
-      <thead>
-        <tr>
-          {keys.map((k) => (
-            <Th key={k}>{k}</Th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => (
-          <tr key={i} className="hover:bg-black/[0.02]">
-            {keys.map((k) => (
-              <Td key={k} className="max-w-[280px] truncate font-mono text-xs">
-                <span title={String(row[k] ?? "")}>
-                  {row[k] === null || row[k] === undefined
-                    ? "—"
-                    : typeof row[k] === "object"
-                      ? JSON.stringify(row[k])
-                      : String(row[k])}
-                </span>
-              </Td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </TableWrap>
-  );
-}
-
 type AdminTabPanelsProps = {
   activeNav: string;
   tabLoading: boolean;
@@ -108,6 +75,7 @@ type AdminTabPanelsProps = {
   featureCosts: Record<string, unknown>[] | null;
   appConfig: Record<string, unknown>[] | null;
   reportsStats: AdminDashboardPayload | null;
+  onConfigSaved?: () => void;
 };
 
 export function AdminTabPanels({
@@ -121,6 +89,7 @@ export function AdminTabPanels({
   featureCosts,
   appConfig,
   reportsStats,
+  onConfigSaved,
 }: AdminTabPanelsProps) {
   const edgeHint = (
     <p className="mt-4 text-xs text-admin-text-secondary">
@@ -372,28 +341,41 @@ export function AdminTabPanels({
 
   if (activeNav === "feature-costs" && featureCosts) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="text-sm text-admin-text-secondary">
-          Đọc qua Supabase client (RLS công khai). Nếu lỗi quyền, kiểm tra policy
-          trên bảng{" "}
+          Sửa từng dòng rồi bấm <strong className="font-medium">Lưu thay đổi</strong>.
+          Ghi xuống DB qua Edge Function{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>{" "}
+          (JWT + <code className="rounded bg-admin-canvas px-1 text-[11px]">ADMIN_EMAILS</code>
+          ). Chỉ các cột trong allowlist trên function mới được cập nhật — nếu thiếu cột,
+          bổ sung trong{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">
-            feature_credit_costs
+            supabase/functions/admin-config/index.ts
           </code>
           .
         </p>
-        <DynamicConfigTable rows={featureCosts} />
+        <ConfigRowsEditor
+          table="feature_credit_costs"
+          rows={featureCosts}
+          onSaved={() => onConfigSaved?.()}
+        />
       </div>
     );
   }
 
   if (activeNav === "app-config" && appConfig) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="text-sm text-admin-text-secondary">
-          Đọc qua Supabase client (RLS). Chỉnh sửa giá trị nên thực hiện trên
-          Supabase Table Editor hoặc SQL cho đến khi có form admin.
+          Cấu hình key/value (và mô tả). Cột <code className="font-mono text-[11px]">value</code>{" "}
+          kiểu JSON có thể sửa trong ô JSON. Lưu qua{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>.
         </p>
-        <DynamicConfigTable rows={appConfig} />
+        <ConfigRowsEditor
+          table="app_config"
+          rows={appConfig}
+          onSaved={() => onConfigSaved?.()}
+        />
       </div>
     );
   }
@@ -428,8 +410,10 @@ export function AdminTabPanels({
           <code className="rounded bg-admin-canvas px-1 text-[11px]">
             admin-dashboard-stats
           </code>{" "}
+          ,{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-data</code>{" "}
           và{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-data</code>
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>
           .
         </p>
       </div>

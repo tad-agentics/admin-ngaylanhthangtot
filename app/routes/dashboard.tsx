@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useIsFetching,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Banknote, ShoppingBag, UserPlus } from "lucide-react";
 
@@ -14,12 +19,16 @@ import {
   fetchAdminTableRows,
 } from "~/lib/admin-data";
 import {
+  fetchAppConfigRows,
+  fetchFeatureCreditCostsRows,
+} from "~/lib/admin-public-reads";
+import {
   type AdminDashboardPayload,
   fetchAdminDashboardStats,
   formatVnd,
 } from "~/lib/admin-stats";
 import { useAuth } from "~/lib/auth";
-import { supabase } from "~/lib/supabase";
+import { adminKeys } from "~/lib/query-keys";
 
 function EnvBanner({ ok }: { ok: boolean }) {
   if (ok) return null;
@@ -53,25 +62,8 @@ export default function AdminDashboard() {
   const hasEnv = Boolean(url && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeNav, setActiveNav] = useState("overview");
-  const [stats, setStats] = useState<AdminDashboardPayload | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState<string | null>(null);
-
-  const [tabLoading, setTabLoading] = useState(false);
-  const [tabError, setTabError] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<AdminProfileRow[] | null>(null);
-  const [payments, setPayments] = useState<AdminPaymentRow[] | null>(null);
-  const [ledger, setLedger] = useState<AdminLedgerRow[] | null>(null);
-  const [featureCosts, setFeatureCosts] = useState<
-    Record<string, unknown>[] | null
-  >(null);
-  const [appConfig, setAppConfig] = useState<Record<string, unknown>[] | null>(
-    null,
-  );
-  const [reportsStats, setReportsStats] = useState<AdminDashboardPayload | null>(
-    null,
-  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -80,101 +72,74 @@ export default function AdminDashboard() {
     }
   }, [authLoading, user, navigate]);
 
-  useEffect(() => {
-    if (!user || !hasEnv || activeNav !== "overview") return;
-    let cancelled = false;
-    setStatsLoading(true);
-    setStatsError(null);
-    void fetchAdminDashboardStats()
-      .then((data) => {
-        if (!cancelled) {
-          setStats(data);
-          setStatsLoading(false);
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          setStats(null);
-          setStatsLoading(false);
-          setStatsError(e instanceof Error ? e.message : "Không tải được số liệu");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, hasEnv, activeNav]);
+  const dashboardStatsQuery = useQuery({
+    queryKey: adminKeys.dashboardStats(),
+    queryFn: fetchAdminDashboardStats,
+    enabled:
+      !!user &&
+      hasEnv &&
+      (activeNav === "overview" || activeNav === "reports"),
+  });
 
-  useEffect(() => {
-    if (!user || !hasEnv) return;
-    const dataTabs = [
-      "users",
-      "payments",
-      "ledger",
-      "feature-costs",
-      "app-config",
-      "reports",
-    ] as const;
-    if (!dataTabs.includes(activeNav as (typeof dataTabs)[number])) {
-      setTabLoading(false);
-      setTabError(null);
-      return;
+  const profilesQuery = useQuery({
+    queryKey: adminKeys.profiles(),
+    queryFn: () => fetchAdminTableRows<AdminProfileRow>("profiles"),
+    enabled: !!user && hasEnv && activeNav === "users",
+  });
+
+  const paymentsQuery = useQuery({
+    queryKey: adminKeys.paymentOrders(),
+    queryFn: () => fetchAdminTableRows<AdminPaymentRow>("payment_orders"),
+    enabled: !!user && hasEnv && activeNav === "payments",
+  });
+
+  const ledgerQuery = useQuery({
+    queryKey: adminKeys.creditLedger(),
+    queryFn: () => fetchAdminTableRows<AdminLedgerRow>("credit_ledger"),
+    enabled: !!user && hasEnv && activeNav === "ledger",
+  });
+
+  const featureCostsQuery = useQuery({
+    queryKey: adminKeys.featureCosts(),
+    queryFn: fetchFeatureCreditCostsRows,
+    enabled: !!user && hasEnv && activeNav === "feature-costs",
+  });
+
+  const appConfigQuery = useQuery({
+    queryKey: adminKeys.appConfig(),
+    queryFn: fetchAppConfigRows,
+    enabled: !!user && hasEnv && activeNav === "app-config",
+  });
+
+  const anyAdminFetching = useIsFetching({ queryKey: adminKeys.all });
+
+  const handleRefresh = useCallback(() => {
+    if (!hasEnv) return;
+    switch (activeNav) {
+      case "overview":
+      case "reports":
+        void queryClient.refetchQueries({ queryKey: adminKeys.dashboardStats() });
+        break;
+      case "users":
+        void queryClient.refetchQueries({ queryKey: adminKeys.profiles() });
+        break;
+      case "payments":
+        void queryClient.refetchQueries({ queryKey: adminKeys.paymentOrders() });
+        break;
+      case "ledger":
+        void queryClient.refetchQueries({ queryKey: adminKeys.creditLedger() });
+        break;
+      case "feature-costs":
+        void queryClient.refetchQueries({ queryKey: adminKeys.featureCosts() });
+        break;
+      case "app-config":
+        void queryClient.refetchQueries({ queryKey: adminKeys.appConfig() });
+        break;
+      default:
+        void queryClient.refetchQueries({ queryKey: adminKeys.all });
+        break;
     }
-
-    let cancelled = false;
-    setTabLoading(true);
-    setTabError(null);
-
-    void (async () => {
-      try {
-        if (activeNav === "users") {
-          const rows = await fetchAdminTableRows<AdminProfileRow>("profiles");
-          if (!cancelled) setProfiles(rows);
-        } else if (activeNav === "payments") {
-          const rows =
-            await fetchAdminTableRows<AdminPaymentRow>("payment_orders");
-          if (!cancelled) setPayments(rows);
-        } else if (activeNav === "ledger") {
-          const rows = await fetchAdminTableRows<AdminLedgerRow>("credit_ledger");
-          if (!cancelled) setLedger(rows);
-        } else if (activeNav === "feature-costs") {
-          const { data, error } = await supabase
-            .from("feature_credit_costs")
-            .select("*");
-          if (error) throw error;
-          const list = [...(data ?? [])] as Record<string, unknown>[];
-          list.sort((a, b) => {
-            const ak = String(a.feature_key ?? a.id ?? "");
-            const bk = String(b.feature_key ?? b.id ?? "");
-            return ak.localeCompare(bk);
-          });
-          if (!cancelled) setFeatureCosts(list);
-        } else if (activeNav === "app-config") {
-          const { data, error } = await supabase.from("app_config").select("*");
-          if (error) throw error;
-          const list = [...(data ?? [])] as Record<string, unknown>[];
-          list.sort((a, b) => {
-            const ak = String(a.key ?? a.id ?? "");
-            const bk = String(b.key ?? b.id ?? "");
-            return ak.localeCompare(bk);
-          });
-          if (!cancelled) setAppConfig(list);
-        } else if (activeNav === "reports") {
-          const payload = await fetchAdminDashboardStats();
-          if (!cancelled) setReportsStats(payload);
-        }
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setTabError(e instanceof Error ? e.message : "Không tải được");
-        }
-      } finally {
-        if (!cancelled) setTabLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user, hasEnv, activeNav]);
+  }, [activeNav, hasEnv, queryClient]);
 
   if (authLoading || !user) {
     return (
@@ -184,8 +149,57 @@ export default function AdminDashboard() {
     );
   }
 
-  const display = stats ?? emptyStats;
+  const display = dashboardStatsQuery.data ?? emptyStats;
   const chartMonthly = display.monthly.length ? display.monthly : emptyStats.monthly;
+  const statsLoading = dashboardStatsQuery.isLoading;
+  const statsError = dashboardStatsQuery.error?.message ?? null;
+
+  const isRefreshing =
+    activeNav === "overview" || activeNav === "reports"
+      ? dashboardStatsQuery.isFetching
+      : activeNav === "users"
+        ? profilesQuery.isFetching
+        : activeNav === "payments"
+          ? paymentsQuery.isFetching
+          : activeNav === "ledger"
+            ? ledgerQuery.isFetching
+            : activeNav === "feature-costs"
+              ? featureCostsQuery.isFetching
+              : activeNav === "app-config"
+                ? appConfigQuery.isFetching
+                : activeNav === "settings" || activeNav === "roles"
+                  ? anyAdminFetching > 0
+                  : false;
+
+  const tabLoading =
+    activeNav === "users"
+      ? profilesQuery.isLoading
+      : activeNav === "payments"
+        ? paymentsQuery.isLoading
+        : activeNav === "ledger"
+          ? ledgerQuery.isLoading
+          : activeNav === "feature-costs"
+            ? featureCostsQuery.isLoading
+            : activeNav === "app-config"
+              ? appConfigQuery.isLoading
+              : activeNav === "reports"
+                ? dashboardStatsQuery.isLoading
+                : false;
+
+  const tabError =
+    activeNav === "users"
+      ? (profilesQuery.error?.message ?? null)
+      : activeNav === "payments"
+        ? (paymentsQuery.error?.message ?? null)
+        : activeNav === "ledger"
+          ? (ledgerQuery.error?.message ?? null)
+          : activeNav === "feature-costs"
+            ? (featureCostsQuery.error?.message ?? null)
+            : activeNav === "app-config"
+              ? (appConfigQuery.error?.message ?? null)
+              : activeNav === "reports"
+                ? (dashboardStatsQuery.error?.message ?? null)
+                : null;
 
   return (
     <div className="flex min-h-dvh bg-admin-canvas text-foreground">
@@ -203,6 +217,8 @@ export default function AdminDashboard() {
                 user.email?.split("@")[0] ??
                 "Admin"
               }
+              onRefresh={hasEnv ? handleRefresh : undefined}
+              refreshing={hasEnv && isRefreshing}
             />
             <EnvBanner ok={hasEnv} />
 
@@ -295,12 +311,40 @@ export default function AdminDashboard() {
                 tabLoading={tabLoading}
                 tabError={tabError}
                 userEmail={user.email ?? null}
-                profiles={profiles}
-                payments={payments}
-                ledger={ledger}
-                featureCosts={featureCosts}
-                appConfig={appConfig}
-                reportsStats={reportsStats}
+                profiles={
+                  activeNav === "users" ? (profilesQuery.data ?? null) : null
+                }
+                payments={
+                  activeNav === "payments"
+                    ? (paymentsQuery.data ?? null)
+                    : null
+                }
+                ledger={
+                  activeNav === "ledger" ? (ledgerQuery.data ?? null) : null
+                }
+                featureCosts={
+                  activeNav === "feature-costs"
+                    ? (featureCostsQuery.data ?? null)
+                    : null
+                }
+                appConfig={
+                  activeNav === "app-config"
+                    ? (appConfigQuery.data ?? null)
+                    : null
+                }
+                reportsStats={
+                  activeNav === "reports"
+                    ? (dashboardStatsQuery.data ?? null)
+                    : null
+                }
+                onConfigSaved={() => {
+                  void queryClient.invalidateQueries({
+                    queryKey: adminKeys.featureCosts(),
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: adminKeys.appConfig(),
+                  });
+                }}
               />
             )}
           </div>

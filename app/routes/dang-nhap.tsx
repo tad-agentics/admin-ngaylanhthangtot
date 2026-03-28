@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 
 import { NgayLanhLogoLockupCompact } from "~/components/brand/NgayLanhLogoLockupCompact";
@@ -10,8 +10,6 @@ export default function DangNhapRoute() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
-
-  const callbackHint = useMemo(() => getAuthCallbackUrl(), []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -41,16 +39,7 @@ export default function DangNhapRoute() {
           <NgayLanhLogoLockupCompact markSize={40} />
         </Link>
 
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">
-            Đăng nhập admin
-          </h1>
-          <p className="mt-1 text-sm text-admin-text-secondary">
-            Nhập email — bạn sẽ nhận <strong className="font-medium text-foreground">magic link</strong>{" "}
-            từ Supabase. Tài khoản phải có email trong secret{" "}
-            <code className="rounded bg-admin-canvas px-1 text-xs">ADMIN_EMAILS</code>.
-          </p>
-        </div>
+        <h1 className="text-xl font-semibold text-foreground">Đăng nhập admin</h1>
 
         {sent ? (
           <div className="rounded-xl border border-admin-border-subtle bg-admin-card p-4 text-sm">
@@ -101,24 +90,6 @@ export default function DangNhapRoute() {
             </button>
           </form>
         )}
-
-        <p className="text-[11px] leading-relaxed text-admin-text-secondary">
-          Supabase → Authentication: bật email.{" "}
-          <strong className="font-medium text-foreground">Redirect URLs</strong> phải có{" "}
-          <code className="rounded bg-admin-canvas px-1">{callbackHint}</code> (admin —
-          vd. <code className="rounded bg-admin-canvas px-1">admin.ngaylanhthangtot.vn</code>
-          ). Site URL có thể vẫn là app user (
-          <code className="rounded bg-admin-canvas px-1">ngaylanhthangtot.vn</code>
-          ).
-          {import.meta.env.VITE_APP_URL ? null : (
-            <>
-              {" "}
-              Đang dev: đang dùng origin trình duyệt — set{" "}
-              <code className="rounded bg-admin-canvas px-1">VITE_APP_URL</code> khi build
-              production.
-            </>
-          )}
-        </p>
       </div>
     </main>
   );

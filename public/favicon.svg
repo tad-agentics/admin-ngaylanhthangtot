@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140">
+  <circle cx="70" cy="70" r="65" fill="#0a0a0a"/>
+  <path fill="#fafafa" d="M70,1.5 L73.5,5 L70,8.5 L66.5,5 Z M116,20.5 L119.5,24 L116,27.5 L112.5,24 Z M135,66.5 L138.5,70 L135,73.5 L131.5,70 Z M116,112.5 L119.5,116 L116,119.5 L112.5,116 Z M70,131.5 L73.5,135 L70,138.5 L66.5,135 Z M24,112.5 L27.5,116 L24,119.5 L20.5,116 Z M5,66.5 L8.5,70 L5,73.5 L1.5,70 Z M24,20.5 L27.5,24 L24,27.5 L20.5,24 Z"/>
+  <circle cx="70" cy="70" r="65" fill="none" stroke="#fafafa" stroke-width="1.5"/>
+  <text x="70" y="78" text-anchor="middle" font-family="'Noto Serif SC',serif" font-weight="700" font-size="36" fill="#fafafa">吉</text>
+</svg>

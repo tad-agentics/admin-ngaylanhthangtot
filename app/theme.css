@@ -1,0 +1,136 @@
+@custom-variant dark (&:is(.dark *));
+
+/* Token màu cùng họ với app NLTT — font hệ thống (không bundle Lora). */
+:root {
+  --font-size: 16px;
+
+  --background: oklch(0.91 0.01 80);
+  --foreground: oklch(0.12 0.02 80);
+  --card: oklch(0.96 0.005 80);
+  --card-foreground: oklch(0.12 0.02 80);
+  --popover: oklch(0.96 0.005 80);
+  --popover-foreground: oklch(0.12 0.02 80);
+
+  --primary: oklch(0.73 0.12 85);
+  --primary-foreground: oklch(0.12 0.02 80);
+
+  --secondary: oklch(0.87 0.015 80);
+  --secondary-foreground: oklch(0.12 0.02 80);
+
+  --muted: oklch(0.87 0.015 80);
+  --muted-foreground: oklch(0.48 0.04 80);
+
+  --accent: oklch(0.73 0.12 85);
+  --accent-foreground: oklch(0.12 0.02 80);
+
+  --destructive: oklch(0.35 0.15 25);
+  --destructive-foreground: oklch(0.96 0.005 80);
+
+  --border: oklch(0.76 0.03 80);
+  --input: oklch(0.96 0.005 80);
+  --input-background: oklch(0.93 0.008 80);
+  --switch-background: oklch(0.76 0.03 80);
+  --ring: oklch(0.73 0.12 85);
+
+  --success: oklch(0.52 0.10 155);
+  --success-foreground: oklch(0.96 0.005 80);
+  --danger: oklch(0.35 0.15 25);
+  --danger-foreground: oklch(0.96 0.005 80);
+  --warning: oklch(0.53 0.11 80);
+  --warning-foreground: oklch(0.12 0.02 80);
+
+  --forest: oklch(0.255 0.092 150);
+  --forest-foreground: oklch(0.93 0.03 96);
+  --surface: var(--forest);
+  --surface-foreground: var(--forest-foreground);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 9999px;
+  --radius: 14px;
+
+  --chart-1: oklch(0.73 0.12 85);
+  --chart-2: oklch(0.52 0.10 155);
+  --chart-3: oklch(0.53 0.11 80);
+  --chart-4: oklch(0.35 0.15 25);
+  --chart-5: oklch(0.48 0.04 80);
+
+  /* Admin shell (mockup: light SaaS, neutral gray + emerald accent) */
+  --admin-sidebar: oklch(0.965 0.004 85);
+  --admin-canvas: oklch(0.985 0.003 85);
+  --admin-card: oklch(1 0 0);
+  --admin-border-subtle: oklch(0.91 0.006 85);
+  --admin-text-secondary: oklch(0.45 0.02 85);
+  --admin-chart-new: oklch(0.88 0.006 85);
+  --admin-chart-existing: oklch(0.18 0.02 85);
+  --admin-positive: oklch(0.55 0.14 155);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-admin-sidebar: var(--admin-sidebar);
+  --color-admin-canvas: var(--admin-canvas);
+  --color-admin-card: var(--admin-card);
+  --color-admin-border-subtle: var(--admin-border-subtle);
+  --color-admin-text-secondary: var(--admin-text-secondary);
+  --color-admin-chart-new: var(--admin-chart-new);
+  --color-admin-chart-existing: var(--admin-chart-existing);
+  --color-admin-positive: var(--admin-positive);
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+}

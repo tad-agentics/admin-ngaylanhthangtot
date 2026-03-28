@@ -4,6 +4,7 @@ import {
   ChevronDown,
   CreditCard,
   LayoutDashboard,
+  LayoutPanelTop,
   Settings,
   Shield,
   SlidersHorizontal,
@@ -34,6 +35,7 @@ const creditsMenu: NavItem[] = [
 ];
 
 const managementMenu: NavItem[] = [
+  { id: "site-banner", label: "Banner đầu trang", icon: LayoutPanelTop },
   { id: "app-config", label: "Cấu hình app", icon: Settings },
   { id: "roles", label: "Vai trò & quyền", icon: Shield },
 ];

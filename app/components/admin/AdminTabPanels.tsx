@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 import { ConfigRowsEditor } from "~/components/admin/ConfigRowsEditor";
+import { SiteBannerAdminPanel } from "~/components/admin/SiteBannerAdminPanel";
 import { UsersAdminPanel } from "~/components/admin/UsersAdminPanel";
 import type {
   AdminLedgerRow,
   AdminPaymentRow,
   AdminProfileRow,
 } from "~/lib/admin-data";
+import type { SiteBannerGetResponse } from "~/lib/admin-site-banner";
 import {
   type AdminDashboardPayload,
   formatVnd,
@@ -75,6 +77,7 @@ type AdminTabPanelsProps = {
   ledger: AdminLedgerRow[] | null;
   featureCosts: Record<string, unknown>[] | null;
   appConfig: Record<string, unknown>[] | null;
+  siteBanner: SiteBannerGetResponse | null;
   reportsStats: AdminDashboardPayload | null;
   onConfigSaved?: () => void;
   currentUserId: string;
@@ -91,6 +94,7 @@ export function AdminTabPanels({
   ledger,
   featureCosts,
   appConfig,
+  siteBanner,
   reportsStats,
   onConfigSaved,
   currentUserId,
@@ -115,6 +119,7 @@ export function AdminTabPanels({
       "ledger",
       "feature-costs",
       "app-config",
+      "site-banner",
       "roles",
       "settings",
     ].includes(activeNav)
@@ -335,12 +340,26 @@ export function AdminTabPanels({
           kiểu JSON có thể sửa trong ô JSON. Lưu qua{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>.
         </p>
+        <p className="text-xs text-amber-900/90">
+          Banner sticky: nên chỉnh tab{" "}
+          <strong className="font-medium">Banner đầu trang</strong> để tránh lệch JSON thủ
+          công với app.
+        </p>
         <ConfigRowsEditor
           table="app_config"
           rows={appConfig}
           onSaved={() => onConfigSaved?.()}
         />
       </div>
+    );
+  }
+
+  if (activeNav === "site-banner" && siteBanner) {
+    return (
+      <SiteBannerAdminPanel
+        initial={siteBanner}
+        onSaved={() => onConfigSaved?.()}
+      />
     );
   }
 
@@ -381,6 +400,10 @@ export function AdminTabPanels({
           ,{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">
             admin-user-actions
+          </code>
+          ,{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">
+            admin-site-banner
           </code>
           .
         </p>

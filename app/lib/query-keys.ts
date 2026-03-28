@@ -7,4 +7,5 @@ export const adminKeys = {
   creditLedger: () => [...adminKeys.all, "credit-ledger"] as const,
   featureCosts: () => [...adminKeys.all, "feature-costs"] as const,
   appConfig: () => [...adminKeys.all, "app-config"] as const,
+  siteBanner: () => [...adminKeys.all, "site-banner"] as const,
 };

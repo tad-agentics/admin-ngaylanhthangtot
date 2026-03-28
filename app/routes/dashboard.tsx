@@ -22,6 +22,7 @@ import {
   fetchAppConfigRows,
   fetchFeatureCreditCostsRows,
 } from "~/lib/admin-public-reads";
+import { fetchAdminSiteBanner } from "~/lib/admin-site-banner";
 import {
   type AdminDashboardPayload,
   fetchAdminDashboardStats,
@@ -111,6 +112,12 @@ export default function AdminDashboard() {
     enabled: !!user && hasEnv && activeNav === "app-config",
   });
 
+  const siteBannerQuery = useQuery({
+    queryKey: adminKeys.siteBanner(),
+    queryFn: fetchAdminSiteBanner,
+    enabled: !!user && hasEnv && activeNav === "site-banner",
+  });
+
   const anyAdminFetching = useIsFetching({ queryKey: adminKeys.all });
 
   const handleRefresh = useCallback(() => {
@@ -134,6 +141,9 @@ export default function AdminDashboard() {
         break;
       case "app-config":
         void queryClient.refetchQueries({ queryKey: adminKeys.appConfig() });
+        break;
+      case "site-banner":
+        void queryClient.refetchQueries({ queryKey: adminKeys.siteBanner() });
         break;
       default:
         void queryClient.refetchQueries({ queryKey: adminKeys.all });
@@ -167,9 +177,11 @@ export default function AdminDashboard() {
               ? featureCostsQuery.isFetching
               : activeNav === "app-config"
                 ? appConfigQuery.isFetching
-                : activeNav === "settings" || activeNav === "roles"
-                  ? anyAdminFetching > 0
-                  : false;
+                : activeNav === "site-banner"
+                  ? siteBannerQuery.isFetching
+                  : activeNav === "settings" || activeNav === "roles"
+                    ? anyAdminFetching > 0
+                    : false;
 
   const tabLoading =
     activeNav === "users"
@@ -182,9 +194,11 @@ export default function AdminDashboard() {
             ? featureCostsQuery.isLoading
             : activeNav === "app-config"
               ? appConfigQuery.isLoading
-              : activeNav === "reports"
-                ? dashboardStatsQuery.isLoading
-                : false;
+              : activeNav === "site-banner"
+                ? siteBannerQuery.isLoading
+                : activeNav === "reports"
+                  ? dashboardStatsQuery.isLoading
+                  : false;
 
   const tabError =
     activeNav === "users"
@@ -197,9 +211,11 @@ export default function AdminDashboard() {
             ? (featureCostsQuery.error?.message ?? null)
             : activeNav === "app-config"
               ? (appConfigQuery.error?.message ?? null)
-              : activeNav === "reports"
-                ? (dashboardStatsQuery.error?.message ?? null)
-                : null;
+              : activeNav === "site-banner"
+                ? (siteBannerQuery.error?.message ?? null)
+                : activeNav === "reports"
+                  ? (dashboardStatsQuery.error?.message ?? null)
+                  : null;
 
   return (
     <div className="flex min-h-dvh bg-admin-canvas text-foreground">
@@ -332,6 +348,11 @@ export default function AdminDashboard() {
                     ? (appConfigQuery.data ?? null)
                     : null
                 }
+                siteBanner={
+                  activeNav === "site-banner"
+                    ? (siteBannerQuery.data ?? null)
+                    : null
+                }
                 reportsStats={
                   activeNav === "reports"
                     ? (dashboardStatsQuery.data ?? null)
@@ -343,6 +364,9 @@ export default function AdminDashboard() {
                   });
                   void queryClient.invalidateQueries({
                     queryKey: adminKeys.appConfig(),
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: adminKeys.siteBanner(),
                   });
                 }}
                 currentUserId={user.id}

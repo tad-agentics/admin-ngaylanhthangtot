@@ -8,6 +8,7 @@
 #   supabase functions deploy admin-data
 #   supabase functions deploy admin-config
 #   supabase functions deploy admin-user-actions
+#   supabase functions deploy admin-site-banner
 # RPC admin_grant_credits (nạp lượng atomic):
 #   File: supabase/migrations/20260328120000_admin_grant_credits.sql
 #   — Nếu project đã có chuỗi migration từ repo *app user*, KHÔNG chạy
@@ -28,4 +29,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-user-actions]
+verify_jwt = false
+
+[functions.admin-site-banner]
 verify_jwt = false

@@ -5,8 +5,12 @@
 # Triển khai function dashboard:
 #   supabase secrets set ADMIN_EMAILS=admin@example.com
 #   supabase functions deploy admin-dashboard-stats
+#   supabase functions deploy admin-data
 
 project_id = "link-with-supabase-cli"
 
 [functions.admin-dashboard-stats]
+verify_jwt = false
+
+[functions.admin-data]
 verify_jwt = false

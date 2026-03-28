@@ -3,15 +3,23 @@ import { useNavigate } from "react-router";
 import { Banknote, ShoppingBag, UserPlus } from "lucide-react";
 
 import { AdminSidebar } from "~/components/admin/AdminSidebar";
+import { AdminTabPanels } from "~/components/admin/AdminTabPanels";
 import { AdminTopBar } from "~/components/admin/AdminTopBar";
 import { RevenueTrendCard } from "~/components/admin/RevenueTrendCard";
 import { StatCard } from "~/components/admin/StatCard";
+import {
+  type AdminLedgerRow,
+  type AdminPaymentRow,
+  type AdminProfileRow,
+  fetchAdminTableRows,
+} from "~/lib/admin-data";
 import {
   type AdminDashboardPayload,
   fetchAdminDashboardStats,
   formatVnd,
 } from "~/lib/admin-stats";
 import { useAuth } from "~/lib/auth";
+import { supabase } from "~/lib/supabase";
 
 function EnvBanner({ ok }: { ok: boolean }) {
   if (ok) return null;
@@ -50,6 +58,21 @@ export default function AdminDashboard() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
 
+  const [tabLoading, setTabLoading] = useState(false);
+  const [tabError, setTabError] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<AdminProfileRow[] | null>(null);
+  const [payments, setPayments] = useState<AdminPaymentRow[] | null>(null);
+  const [ledger, setLedger] = useState<AdminLedgerRow[] | null>(null);
+  const [featureCosts, setFeatureCosts] = useState<
+    Record<string, unknown>[] | null
+  >(null);
+  const [appConfig, setAppConfig] = useState<Record<string, unknown>[] | null>(
+    null,
+  );
+  const [reportsStats, setReportsStats] = useState<AdminDashboardPayload | null>(
+    null,
+  );
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -76,6 +99,78 @@ export default function AdminDashboard() {
           setStatsError(e instanceof Error ? e.message : "Không tải được số liệu");
         }
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, hasEnv, activeNav]);
+
+  useEffect(() => {
+    if (!user || !hasEnv) return;
+    const dataTabs = [
+      "users",
+      "payments",
+      "ledger",
+      "feature-costs",
+      "app-config",
+      "reports",
+    ] as const;
+    if (!dataTabs.includes(activeNav as (typeof dataTabs)[number])) {
+      setTabLoading(false);
+      setTabError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setTabLoading(true);
+    setTabError(null);
+
+    void (async () => {
+      try {
+        if (activeNav === "users") {
+          const rows = await fetchAdminTableRows<AdminProfileRow>("profiles");
+          if (!cancelled) setProfiles(rows);
+        } else if (activeNav === "payments") {
+          const rows =
+            await fetchAdminTableRows<AdminPaymentRow>("payment_orders");
+          if (!cancelled) setPayments(rows);
+        } else if (activeNav === "ledger") {
+          const rows = await fetchAdminTableRows<AdminLedgerRow>("credit_ledger");
+          if (!cancelled) setLedger(rows);
+        } else if (activeNav === "feature-costs") {
+          const { data, error } = await supabase
+            .from("feature_credit_costs")
+            .select("*");
+          if (error) throw error;
+          const list = [...(data ?? [])] as Record<string, unknown>[];
+          list.sort((a, b) => {
+            const ak = String(a.feature_key ?? a.id ?? "");
+            const bk = String(b.feature_key ?? b.id ?? "");
+            return ak.localeCompare(bk);
+          });
+          if (!cancelled) setFeatureCosts(list);
+        } else if (activeNav === "app-config") {
+          const { data, error } = await supabase.from("app_config").select("*");
+          if (error) throw error;
+          const list = [...(data ?? [])] as Record<string, unknown>[];
+          list.sort((a, b) => {
+            const ak = String(a.key ?? a.id ?? "");
+            const bk = String(b.key ?? b.id ?? "");
+            return ak.localeCompare(bk);
+          });
+          if (!cancelled) setAppConfig(list);
+        } else if (activeNav === "reports") {
+          const payload = await fetchAdminDashboardStats();
+          if (!cancelled) setReportsStats(payload);
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setTabError(e instanceof Error ? e.message : "Không tải được");
+        }
+      } finally {
+        if (!cancelled) setTabLoading(false);
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -111,7 +206,7 @@ export default function AdminDashboard() {
             />
             <EnvBanner ok={hasEnv} />
 
-            {statsError ? (
+            {activeNav === "overview" && statsError ? (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                 <p className="font-medium">Lỗi dữ liệu</p>
                 <p className="mt-1">{statsError}</p>
@@ -195,15 +290,18 @@ export default function AdminDashboard() {
                 </p>
               </>
             ) : (
-              <div className="rounded-2xl border border-dashed border-admin-border-subtle bg-admin-card/80 px-6 py-16 text-center">
-                <p className="text-sm font-medium text-foreground">
-                  Mục “
-                  <span className="tabular-nums">{activeNav}</span>”
-                </p>
-                <p className="mt-2 text-sm text-admin-text-secondary">
-                  Khung UI đã sẵn sàng — thêm route &amp; bảng dữ liệu cho mục này sau.
-                </p>
-              </div>
+              <AdminTabPanels
+                activeNav={activeNav}
+                tabLoading={tabLoading}
+                tabError={tabError}
+                userEmail={user.email ?? null}
+                profiles={profiles}
+                payments={payments}
+                ledger={ledger}
+                featureCosts={featureCosts}
+                appConfig={appConfig}
+                reportsStats={reportsStats}
+              />
             )}
           </div>
         </main>

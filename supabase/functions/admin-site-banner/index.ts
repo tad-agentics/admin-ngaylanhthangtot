@@ -2,8 +2,9 @@
  * Read / update sticky site banner (`app_config.site_banner` JSON).
  * Admin only: Bearer user JWT + ADMIN_EMAILS allowlist (same as admin-dashboard-stats).
  *
- * GET/PUT — invoke with Authorization: Bearer <access_token>.
- * PUT body: { "enabled": boolean, "message": string, "href": string | null }
+ * GET / PUT / POST — invoke with Authorization: Bearer <access_token>.
+ * PUT or POST body: { "enabled": boolean, "message": string, "href": string | null }
+ * (POST giống PUT: tránh một số môi trường chặn PUT / CORS preflight.)
  *
  * Deploy: supabase secrets set ADMIN_EMAILS=you@domain.com,other@domain.com
  */
@@ -13,10 +14,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const CONFIG_KEY = "site_banner";
 const MAX_MESSAGE_LEN = 600;
 
+/** Bắt buộc có Allow-Methods — thiếu thì trình duyệt chặn PUT/POST từ SPA (preflight). */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
 };
 
 type SiteBannerPayload = {
@@ -182,7 +185,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (req.method === "PUT") {
+  if (req.method === "PUT" || req.method === "POST") {
     const gate = await requireAdmin(req, supabaseUrl, anonKey);
     if (gate instanceof Response) return gate;
     const { admin, email } = gate;
@@ -276,5 +279,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  return json({ error: { code: "METHOD_NOT_ALLOWED", message: "GET/PUT only" } }, 405);
+  return json(
+    { error: { code: "METHOD_NOT_ALLOWED", message: "GET, PUT, or POST only" } },
+    405,
+  );
 });

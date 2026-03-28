@@ -1,4 +1,4 @@
-import { FunctionsHttpError } from "@supabase/supabase-js";
+import { FunctionsFetchError, FunctionsHttpError } from "@supabase/supabase-js";
 
 import { supabase } from "~/lib/supabase";
 
@@ -25,6 +25,21 @@ async function describeFunctionsError(
   err: unknown,
   functionName: string,
 ): Promise<string> {
+  if (err instanceof FunctionsFetchError) {
+    const ctx = err.context;
+    const inner =
+      ctx instanceof Error
+        ? ctx.message
+        : ctx && typeof ctx === "object" && "message" in ctx
+          ? String((ctx as { message: unknown }).message)
+          : "";
+    const hint =
+      "Không kết nối được tới Edge Function. Kiểm tra: đã deploy " +
+      functionName +
+      "; extension/chặn tracker không chặn *.supabase.co; CORS trên function có Access-Control-Allow-Methods (GET, POST, PUT).";
+    return inner ? `${hint} Chi tiết: ${inner}` : hint;
+  }
+
   if (err instanceof FunctionsHttpError) {
     const res = err.context as Response;
     const status = res.status;
@@ -96,7 +111,7 @@ export async function putAdminSiteBanner(
   const { data, error } = await supabase.functions.invoke<
     SiteBannerPutResponse | ErrorBody
   >("admin-site-banner", {
-    method: "PUT",
+    method: "POST",
     body: payload,
   });
 

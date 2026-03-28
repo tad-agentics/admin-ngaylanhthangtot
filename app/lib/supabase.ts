@@ -11,7 +11,12 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    flowType: "pkce",
+    /**
+     * Implicit: magic link gắn token trong hash → mở link trên điện thoại / trình duyệt
+     * khác so với lúc gửi OTP vẫn đăng nhập được.
+     * PKCE yêu cầu cùng trình duyệt (code verifier trong localStorage) — dễ “đứng” ở /dang-nhap.
+     */
+    flowType: "implicit",
     detectSessionInUrl: true,
   },
 });

@@ -46,7 +46,9 @@ export default function DangNhapRoute() {
             <p className="font-medium text-foreground">Đã gửi liên kết</p>
             <p className="mt-2 text-admin-text-secondary">
               Mở hộp thư <strong className="text-foreground">{email}</strong> và bấm
-              vào link đăng nhập. Nếu không thấy, kiểm tra mục spam.
+              vào link đăng nhập. Nếu không thấy, kiểm tra mục spam. Nếu link báo lỗi,
+              hãy gửi lại magic link mới (link cũ có thể đã hết hạn hoặc dùng nhầm bản
+              gửi trước khi đổi cấu hình).
             </p>
             <button
               type="button"

@@ -3,8 +3,18 @@ import { useNavigate } from "react-router";
 
 import { supabase } from "~/lib/supabase";
 
+function isPkceVerifierMessage(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("code verifier") ||
+    m.includes("pkce") ||
+    m.includes("pkce_code_verifier_not_found")
+  );
+}
+
 /**
- * Magic link (PKCE): Supabase chuyển về với ?code=… — đổi lấy session rồi vào dashboard.
+ * Magic link: sau redirect, GoTrue-js đã parse URL trong initialize (detectSessionInUrl).
+ * Thêm fallback đổi ?code= (PKCE) bằng đúng chuỗi code — không truyền cả URL vào exchangeCodeForSession.
  */
 export default function AuthCallbackRoute() {
   const navigate = useNavigate();
@@ -28,15 +38,33 @@ export default function AuthCallbackRoute() {
         return;
       }
 
+      const { data: first, error: firstError } = await supabase.auth.getSession();
+      if (!active) return;
+
+      if (firstError) {
+        setMessage(firstError.message);
+        navigate("/dang-nhap", { replace: true });
+        return;
+      }
+
+      if (first.session) {
+        window.history.replaceState({}, document.title, "/auth/callback");
+        navigate("/", { replace: true });
+        return;
+      }
+
       const code = params.get("code");
       if (code) {
         const { error: exchangeErr } =
-          await supabase.auth.exchangeCodeForSession(
-            window.location.href.split("#")[0],
-          );
+          await supabase.auth.exchangeCodeForSession(code);
         if (!active) return;
         if (exchangeErr) {
-          setMessage(exchangeErr.message);
+          const detail = exchangeErr.message;
+          setMessage(
+            isPkceVerifierMessage(detail)
+              ? "Link đăng nhập cần cùng trình duyệt đã gửi OTP, hoặc hãy yêu cầu gửi link mới."
+              : detail,
+          );
           navigate("/dang-nhap", { replace: true });
           return;
         }

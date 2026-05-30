@@ -72,14 +72,8 @@ export async function searchAdminUsers(
   limit = 20,
 ): Promise<AdminUserSearchResponse> {
   const trimmed = q.trim();
-  if (trimmed) {
-    return adminFunctionGet<AdminUserSearchResponse>("admin-users", {
-      q: trimmed,
-      limit,
-    });
-  }
-  return adminFunctionPost<AdminUserSearchResponse>("admin-users", {
-    q: "",
+  return adminFunctionGet<AdminUserSearchResponse>("admin-users", {
+    q: trimmed,
     limit,
   });
 }
@@ -88,15 +82,9 @@ export async function fetchAdminUserDetail(
   userId: string,
   options?: { includeLaSo?: boolean },
 ): Promise<AdminUserDetailResponse> {
-  if (options?.includeLaSo) {
-    return adminFunctionGet<AdminUserDetailResponse>("admin-users", {
-      id: userId,
-      includeLaSo: "1",
-    });
-  }
-  return adminFunctionPost<AdminUserDetailResponse>("admin-users", {
+  return adminFunctionGet<AdminUserDetailResponse>("admin-users", {
     id: userId,
-    includeLaSo: false,
+    ...(options?.includeLaSo ? { includeLaSo: "1" } : {}),
   });
 }
 

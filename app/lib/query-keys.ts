@@ -2,10 +2,6 @@
 export const adminKeys = {
   all: ["admin"] as const,
   dashboardStats: () => [...adminKeys.all, "dashboard-stats"] as const,
-  profiles: () => [...adminKeys.all, "profiles"] as const,
-  paymentOrders: () => [...adminKeys.all, "payment-orders"] as const,
-  creditLedger: () => [...adminKeys.all, "credit-ledger"] as const,
-  featureCosts: () => [...adminKeys.all, "feature-costs"] as const,
   appConfig: () => [...adminKeys.all, "app-config"] as const,
   siteBanner: () => [...adminKeys.all, "site-banner"] as const,
   userSearch: (q: string) => [...adminKeys.all, "users", "search", q] as const,
@@ -13,4 +9,10 @@ export const adminKeys = {
     [...adminKeys.all, "users", "detail", id, includeLaSo ? "la_so" : ""] as const,
   ordersList: (filters: Record<string, string>) =>
     [...adminKeys.all, "orders", filters] as const,
+  referralSummary: () => [...adminKeys.all, "referrals", "summary"] as const,
+  referralEvents: (filters: Record<string, string>) =>
+    [...adminKeys.all, "referrals", "events", filters] as const,
+  referralLeaders: () => [...adminKeys.all, "referrals", "leaders"] as const,
+  referralLinks: (filters: Record<string, string>) =>
+    [...adminKeys.all, "referrals", "links", filters] as const,
 };

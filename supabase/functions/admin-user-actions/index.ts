@@ -1,9 +1,6 @@
 /**
  * Admin user ops — JWT + ADMIN_EMAILS + service_role.
- * POST JSON:
- *  { "action": "add_credits", "userId": "<uuid>", "delta": <positive int>, "reason"?: string }
- *     → RPC public.admin_grant_credits (atomic: profiles + credit_ledger). Cần migration SQL.
- *  { "action": "delete_user", "userId": "<uuid>" }
+ * POST JSON: { "action": "delete_user", "userId": "<uuid>" }
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -16,8 +13,6 @@ const corsHeaders = {
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-
-const MAX_CREDIT_GRANT = 1_000_000;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -108,25 +103,19 @@ Deno.serve(async (req) => {
 
   const callerId = userData.user.id;
 
-  let body: {
-    action?: string;
-    userId?: string;
-    delta?: number;
-    reason?: string;
-  };
+  let body: { action?: string; userId?: string };
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return json({ error: { code: "BAD_REQUEST", message: "Invalid JSON" } }, 400);
   }
 
-  const action = body.action;
-  if (action !== "add_credits" && action !== "delete_user") {
+  if (body.action !== "delete_user") {
     return json(
       {
         error: {
           code: "BAD_REQUEST",
-          message: "action must be add_credits or delete_user",
+          message: "action must be delete_user",
         },
       },
       400,
@@ -137,140 +126,26 @@ Deno.serve(async (req) => {
   if (userIdRes instanceof Response) return userIdRes;
   const userId = userIdRes;
 
+  if (userId === callerId) {
+    return json(
+      {
+        error: {
+          code: "BAD_REQUEST",
+          message: "Cannot delete the account you are signed in with.",
+        },
+      },
+      400,
+    );
+  }
+
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   try {
-    if (action === "delete_user") {
-      if (userId === callerId) {
-        return json(
-          {
-            error: {
-              code: "BAD_REQUEST",
-              message: "Cannot delete the account you are signed in with.",
-            },
-          },
-          400,
-        );
-      }
-
-      const { error: delErr } = await admin.auth.admin.deleteUser(userId);
-      if (delErr) throw delErr;
-      return json({ ok: true, action: "delete_user", userId });
-    }
-
-    const deltaRaw = body.delta;
-    if (typeof deltaRaw !== "number" || !Number.isInteger(deltaRaw)) {
-      return json(
-        {
-          error: {
-            code: "BAD_REQUEST",
-            message: "delta must be a positive integer",
-          },
-        },
-        400,
-      );
-    }
-    const delta = deltaRaw;
-    if (delta <= 0 || delta > MAX_CREDIT_GRANT) {
-      return json(
-        {
-          error: {
-            code: "BAD_REQUEST",
-            message: `delta must be between 1 and ${MAX_CREDIT_GRANT}`,
-          },
-        },
-        400,
-      );
-    }
-
-    const reason =
-      typeof body.reason === "string" && body.reason.trim().length > 0
-        ? body.reason.trim().slice(0, 200)
-        : "admin_credit_grant";
-
-    /* Một transaction DB: tránh race khi nhiều admin cùng nạp (admin_grant_credits). */
-    const { data: newBalRaw, error: rpcErr } = await admin.rpc(
-      "admin_grant_credits",
-      {
-        p_user_id: userId,
-        p_delta: delta,
-        p_reason: reason,
-      },
-    );
-
-    if (rpcErr) {
-      const msg = rpcErr.message ?? "";
-      if (/profile_not_found/i.test(msg)) {
-        return json(
-          { error: { code: "NOT_FOUND", message: "Profile not found for userId" } },
-          404,
-        );
-      }
-      if (/invalid_delta/i.test(msg)) {
-        return json(
-          {
-            error: {
-              code: "BAD_REQUEST",
-              message: `delta must be between 1 and ${MAX_CREDIT_GRANT}`,
-            },
-          },
-          400,
-        );
-      }
-      console.error("admin-user-actions: admin_grant_credits RPC failed", rpcErr);
-      return json(
-        {
-          error: {
-            code: "INTERNAL",
-            message:
-              `${msg || "admin_grant_credits failed"}. ` +
-              `Apply migration supabase/migrations/20260328120000_admin_grant_credits.sql if missing.`,
-          },
-        },
-        500,
-      );
-    }
-
-    if (newBalRaw === null || newBalRaw === undefined) {
-      return json(
-        {
-          error: {
-            code: "INTERNAL",
-            message: "admin_grant_credits returned no balance",
-          },
-        },
-        500,
-      );
-    }
-
-    const credits_balance =
-      typeof newBalRaw === "bigint"
-        ? Number(newBalRaw)
-        : typeof newBalRaw === "number"
-          ? newBalRaw
-          : Number(String(newBalRaw));
-
-    if (!Number.isFinite(credits_balance)) {
-      return json(
-        {
-          error: {
-            code: "INTERNAL",
-            message: "Invalid balance returned from admin_grant_credits",
-          },
-        },
-        500,
-      );
-    }
-
-    return json({
-      ok: true,
-      action: "add_credits",
-      userId,
-      delta,
-      credits_balance,
-    });
+    const { error: delErr } = await admin.auth.admin.deleteUser(userId);
+    if (delErr) throw delErr;
+    return json({ ok: true, action: "delete_user", userId });
   } catch (e) {
     console.error("admin-user-actions", e);
     return json(

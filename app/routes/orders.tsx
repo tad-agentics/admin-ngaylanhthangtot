@@ -160,6 +160,7 @@ export default function OrdersRoute() {
                       "SKU",
                       "Trạng thái",
                       "Số tiền",
+                      "Mã GT",
                       "Coupon",
                       "Tạo",
                     ].map((h) => (
@@ -205,6 +206,9 @@ export default function OrdersRoute() {
                       </td>
                       <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums">
                         {o.amount_vnd != null ? formatVnd(o.amount_vnd) : "—"}
+                      </td>
+                      <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 font-mono text-xs">
+                        {o.checkout_referral_code ?? "—"}
                       </td>
                       <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 text-xs">
                         {o.coupon_code ?? "—"}

@@ -3,11 +3,6 @@ import { Link } from "react-router";
 
 import { ConfigRowsEditor } from "~/components/admin/ConfigRowsEditor";
 import { SiteBannerAdminPanel } from "~/components/admin/SiteBannerAdminPanel";
-import type {
-  AdminLedgerRow,
-  AdminPaymentRow,
-  AdminProfileRow,
-} from "~/lib/admin-data";
 import type { SiteBannerGetResponse } from "~/lib/admin-site-banner";
 import {
   type AdminDashboardPayload,
@@ -35,15 +30,12 @@ function Th({ children }: { children: ReactNode }) {
 function Td({
   children,
   className = "",
-  title,
 }: {
   children: ReactNode;
   className?: string;
-  title?: string;
 }) {
   return (
     <td
-      title={title}
       className={`border-b border-admin-border-subtle/80 px-3 py-2.5 text-foreground ${className}`}
     >
       {children}
@@ -51,37 +43,15 @@ function Td({
   );
 }
 
-function shortId(id: string) {
-  if (id.length <= 12) return id;
-  return `${id.slice(0, 8)}…`;
-}
-
-function formatDt(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("vi-VN", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 type AdminTabPanelsProps = {
   activeNav: string;
   tabLoading: boolean;
   tabError: string | null;
   userEmail: string | null;
-  profiles: AdminProfileRow[] | null;
-  payments: AdminPaymentRow[] | null;
-  ledger: AdminLedgerRow[] | null;
-  featureCosts: Record<string, unknown>[] | null;
   appConfig: Record<string, unknown>[] | null;
   siteBanner: SiteBannerGetResponse | null;
   reportsStats: AdminDashboardPayload | null;
   onConfigSaved?: () => void;
-  currentUserId: string;
-  onUsersMutated?: () => void;
 };
 
 export function AdminTabPanels({
@@ -89,35 +59,17 @@ export function AdminTabPanels({
   tabLoading,
   tabError,
   userEmail,
-  profiles,
-  payments,
-  ledger,
-  featureCosts,
   appConfig,
   siteBanner,
   reportsStats,
   onConfigSaved,
-  currentUserId,
-  onUsersMutated,
 }: AdminTabPanelsProps) {
-  const edgeHint = (
-    <p className="mt-4 text-xs text-admin-text-secondary">
-      Dữ liệu nhạy cảm qua Edge Function{" "}
-      <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-data</code>
-      . Cần deploy function này cùng secret{" "}
-      <code className="rounded bg-admin-canvas px-1 text-[11px]">ADMIN_EMAILS</code>{" "}
-      như Tổng quan.
-    </p>
-  );
-
   if (
     activeNav === "overview" ||
     ![
       "users",
       "payments",
       "reports",
-      "ledger",
-      "feature-costs",
       "app-config",
       "site-banner",
       "roles",
@@ -180,70 +132,13 @@ export function AdminTabPanels({
     );
   }
 
-  if (activeNav === "ledger" && ledger) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-admin-text-secondary">
-          100 bút toán gần nhất trên{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">
-            credit_ledger
-          </code>
-          .
-        </p>
-        <TableWrap>
-          <thead>
-            <tr>
-              <Th>Bản ghi</Th>
-              <Th>User</Th>
-              <Th>Δ</Th>
-              <Th>Số dư sau</Th>
-              <Th>Lý do</Th>
-              <Th>Thời điểm</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {ledger.map((r) => (
-              <tr key={r.id} className="hover:bg-black/[0.02]">
-                <Td className="font-mono text-xs" title={r.id}>
-                  {shortId(r.id)}
-                </Td>
-                <Td className="font-mono text-xs" title={r.user_id}>
-                  {shortId(r.user_id)}
-                </Td>
-                <Td
-                  className={`tabular-nums font-medium ${
-                    r.delta >= 0 ? "text-emerald-700" : "text-red-700"
-                  }`}
-                >
-                  {r.delta >= 0 ? "+" : ""}
-                  {r.delta}
-                </Td>
-                <Td className="tabular-nums">{r.balance_after ?? "—"}</Td>
-                <Td className="max-w-[200px] truncate text-xs" title={r.reason ?? ""}>
-                  {r.reason ?? "—"}
-                </Td>
-                <Td className="whitespace-nowrap text-xs">
-                  {formatDt(r.created_at)}
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </TableWrap>
-        {ledger.length === 0 ? (
-          <p className="text-sm text-admin-text-secondary">Chưa có bút toán.</p>
-        ) : null}
-        {edgeHint}
-      </div>
-    );
-  }
-
   if (activeNav === "reports" && reportsStats) {
     const m = reportsStats.monthly;
     return (
       <div className="space-y-3">
         <p className="text-sm text-admin-text-secondary">
           Doanh thu theo tháng (12 tháng gần nhất), cùng nguồn với biểu đồ Tổng quan
-          (Direction C: gói lịch / luận add-on / legacy).
+          (Direction C: gói lịch / luận add-on / SKU lẻ).
         </p>
         <TableWrap>
           <thead>
@@ -251,7 +146,7 @@ export function AdminTabPanels({
               <Th>Tháng</Th>
               <Th>Gói lịch</Th>
               <Th>Luận add-on</Th>
-              <Th>Legacy</Th>
+              <Th>SKU lẻ</Th>
               <Th>Tổng</Th>
             </tr>
           </thead>
@@ -285,37 +180,20 @@ export function AdminTabPanels({
     );
   }
 
-  if (activeNav === "feature-costs" && featureCosts) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm text-admin-text-secondary">
-          Chỉ được sửa <strong className="font-medium text-foreground">credit_cost</strong>.{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">feature_key</code> và các
-          cột khác chỉ đọc. Lưu qua{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code> (chỉ patch{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">credit_cost</code>).
-        </p>
-        <ConfigRowsEditor
-          table="feature_credit_costs"
-          rows={featureCosts}
-          onSaved={() => onConfigSaved?.()}
-        />
-      </div>
-    );
-  }
-
   if (activeNav === "app-config" && appConfig) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-admin-text-secondary">
-          Cấu hình key/value (và mô tả). Cột <code className="font-mono text-[11px]">value</code>{" "}
-          kiểu JSON có thể sửa trong ô JSON. Lưu qua{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>.
+          Chỉ hiển thị cấu hình Direction C (gói, checkout, banner JSON, …). Các key
+          lượng/credits đã ẩn — sửa{" "}
+          <code className="font-mono text-[11px]">value</code> (JSON nếu cần). Lưu qua{" "}
+          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>
+          .
         </p>
         <p className="text-xs text-amber-900/90">
           Banner sticky: nên chỉnh tab{" "}
-          <strong className="font-medium">Banner đầu trang</strong> để tránh lệch JSON thủ
-          công với app.
+          <strong className="font-medium">Banner đầu trang</strong> để tránh lệch JSON
+          thủ công với app.
         </p>
         <ConfigRowsEditor
           table="app_config"
@@ -364,10 +242,8 @@ export function AdminTabPanels({
           (Supabase → Edge Functions) cho{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">
             admin-dashboard-stats
-          </code>{" "}
+          </code>
           ,{" "}
-          <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-data</code>{" "}
-          và{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>
           ,{" "}
           <code className="rounded bg-admin-canvas px-1 text-[11px]">

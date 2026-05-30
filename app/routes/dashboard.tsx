@@ -12,11 +12,7 @@ import { AdminTabPanels } from "~/components/admin/AdminTabPanels";
 import { OrdersBySkuCard } from "~/components/admin/OrdersBySkuCard";
 import { RevenueTrendCard } from "~/components/admin/RevenueTrendCard";
 import { StatCard } from "~/components/admin/StatCard";
-import { type AdminLedgerRow, fetchAdminTableRows } from "~/lib/admin-data";
-import {
-  fetchAppConfigRows,
-  fetchFeatureCreditCostsRows,
-} from "~/lib/admin-public-reads";
+import { fetchAppConfigRows } from "~/lib/admin-config";
 import { fetchAdminSiteBanner } from "~/lib/admin-site-banner";
 import {
   type AdminDashboardPayload,
@@ -47,10 +43,12 @@ const emptyStats: AdminDashboardPayload = {
   chartScaleMaxM: 1,
 };
 
+const REMOVED_LEGACY_NAV = new Set(["ledger", "feature-costs"]);
+
 export default function AdminDashboard() {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const hasEnv = Boolean(url && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -64,6 +62,10 @@ export default function AdminDashboard() {
     }
     if (navParam === "payments") {
       navigate("/orders", { replace: true });
+      return;
+    }
+    if (navParam && REMOVED_LEGACY_NAV.has(navParam)) {
+      navigate("/", { replace: true });
       return;
     }
     if (navParam) setActiveNav(navParam);
@@ -83,19 +85,6 @@ export default function AdminDashboard() {
       !!user &&
       hasEnv &&
       (activeNav === "overview" || activeNav === "reports"),
-  });
-
-
-  const ledgerQuery = useQuery({
-    queryKey: adminKeys.creditLedger(),
-    queryFn: () => fetchAdminTableRows<AdminLedgerRow>("credit_ledger"),
-    enabled: !!user && hasEnv && activeNav === "ledger",
-  });
-
-  const featureCostsQuery = useQuery({
-    queryKey: adminKeys.featureCosts(),
-    queryFn: fetchFeatureCreditCostsRows,
-    enabled: !!user && hasEnv && activeNav === "feature-costs",
   });
 
   const appConfigQuery = useQuery({
@@ -119,12 +108,6 @@ export default function AdminDashboard() {
       case "reports":
         void queryClient.refetchQueries({ queryKey: adminKeys.dashboardStats() });
         break;
-      case "ledger":
-        void queryClient.refetchQueries({ queryKey: adminKeys.creditLedger() });
-        break;
-      case "feature-costs":
-        void queryClient.refetchQueries({ queryKey: adminKeys.featureCosts() });
-        break;
       case "app-config":
         void queryClient.refetchQueries({ queryKey: adminKeys.appConfig() });
         break;
@@ -145,43 +128,31 @@ export default function AdminDashboard() {
   const isRefreshing =
     activeNav === "overview" || activeNav === "reports"
       ? dashboardStatsQuery.isFetching
-      : activeNav === "ledger"
-            ? ledgerQuery.isFetching
-            : activeNav === "feature-costs"
-              ? featureCostsQuery.isFetching
-              : activeNav === "app-config"
-                ? appConfigQuery.isFetching
-                : activeNav === "site-banner"
-                  ? siteBannerQuery.isFetching
-                  : activeNav === "settings" || activeNav === "roles"
-                    ? anyAdminFetching > 0
-                    : false;
+      : activeNav === "app-config"
+        ? appConfigQuery.isFetching
+        : activeNav === "site-banner"
+          ? siteBannerQuery.isFetching
+          : activeNav === "settings" || activeNav === "roles"
+            ? anyAdminFetching > 0
+            : false;
 
   const tabLoading =
-    activeNav === "ledger"
-          ? ledgerQuery.isLoading
-          : activeNav === "feature-costs"
-            ? featureCostsQuery.isLoading
-            : activeNav === "app-config"
-              ? appConfigQuery.isLoading
-              : activeNav === "site-banner"
-                ? siteBannerQuery.isLoading
-                : activeNav === "reports"
-                  ? dashboardStatsQuery.isLoading
-                  : false;
+    activeNav === "app-config"
+      ? appConfigQuery.isLoading
+      : activeNav === "site-banner"
+        ? siteBannerQuery.isLoading
+        : activeNav === "reports"
+          ? dashboardStatsQuery.isLoading
+          : false;
 
   const tabError =
-    activeNav === "ledger"
-          ? (ledgerQuery.error?.message ?? null)
-          : activeNav === "feature-costs"
-            ? (featureCostsQuery.error?.message ?? null)
-            : activeNav === "app-config"
-              ? (appConfigQuery.error?.message ?? null)
-              : activeNav === "site-banner"
-                ? (siteBannerQuery.error?.message ?? null)
-                : activeNav === "reports"
-                  ? (dashboardStatsQuery.error?.message ?? null)
-                  : null;
+    activeNav === "app-config"
+      ? (appConfigQuery.error?.message ?? null)
+      : activeNav === "site-banner"
+        ? (siteBannerQuery.error?.message ?? null)
+        : activeNav === "reports"
+          ? (dashboardStatsQuery.error?.message ?? null)
+          : null;
 
   const userName =
     user?.user_metadata?.full_name ??
@@ -202,151 +173,115 @@ export default function AdminDashboard() {
       ) : null}
 
       {activeNav === "overview" ? (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  <StatCard
-                    label="Doanh thu PayOS (đã paid)"
-                    value={
-                      statsLoading
-                        ? "…"
-                        : formatVnd(display.totals.totalRevenueVnd)
-                    }
-                    delta={display.totals.revenueMomPct}
-                    footnote="doanh thu tháng này vs tháng trước"
-                    icon={<Banknote className="size-4" strokeWidth={1.75} />}
-                  />
-                  <StatCard
-                    label="Đơn đã thanh toán"
-                    value={
-                      statsLoading
-                        ? "…"
-                        : String(display.totals.paidOrdersCount)
-                    }
-                    delta={display.totals.ordersMomPct}
-                    footnote="số đơn paid — tháng này vs trước"
-                    icon={<ShoppingBag className="size-4" strokeWidth={1.75} />}
-                  />
-                  <StatCard
-                    label="Hồ sơ mới (30 ngày)"
-                    value={
-                      statsLoading
-                        ? "…"
-                        : String(display.totals.newProfilesLast30Days)
-                    }
-                    delta={display.totals.newUsersMomPct}
-                    footnote="so với 30 ngày trước đó"
-                    icon={<UserPlus className="size-4" strokeWidth={1.75} />}
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  <StatCard
-                    label="Gói lịch đang active"
-                    value={
-                      statsLoading
-                        ? "…"
-                        : String(display.totals.activeSubscribers)
-                    }
-                    footnote={`hết hạn: ${statsLoading ? "…" : display.totals.expiredSubscribers} · chưa mua: ${statsLoading ? "…" : display.totals.neverSubscribed}`}
-                    icon={<CalendarDays className="size-4" strokeWidth={1.75} />}
-                  />
-                  <StatCard
-                    label="Luận Bát tự (đã mở)"
-                    value={
-                      statsLoading
-                        ? "…"
-                        : String(display.totals.baziReadingUnlocked)
-                    }
-                    footnote="bazi_reading_unlocked_at"
-                    icon={<BookOpen className="size-4" strokeWidth={1.75} />}
-                  />
-                  <StatCard
-                    label="Tiểu vận đang active"
-                    value={
-                      statsLoading
-                        ? "…"
-                        : String(display.totals.tieuVanReadingActive)
-                    }
-                    footnote="tieu_van_reading_expires_at > now"
-                    icon={<BookOpen className="size-4" strokeWidth={1.75} />}
-                  />
-                </div>
-                <RevenueTrendCard
-                  monthly={chartMonthly}
-                  chartScaleMaxM={display.chartScaleMaxM}
-                  totalRevenueVnd={display.totals.totalRevenueVnd}
-                  loading={statsLoading}
-                  error={null}
-                />
-                <OrdersBySkuCard
-                  ordersBySku={display.totals.ordersBySku}
-                  revenueByBucketVnd={display.totals.revenueByBucketVnd}
-                  loading={statsLoading}
-                />
-                <p className="text-xs text-admin-text-secondary">
-                  Người dùng đăng ký tổng:{" "}
-                  <strong className="font-medium text-foreground">
-                    {statsLoading ? "…" : display.totals.profilesCount}
-                  </strong>
-                  . Dữ liệu từ Edge Function{" "}
-                  <code className="rounded bg-admin-canvas px-1 text-[11px]">
-                    admin-dashboard-stats
-                  </code>
-                  .
-                </p>
-              </>
-            ) : (
-              <AdminTabPanels
-                activeNav={activeNav}
-                tabLoading={tabLoading}
-                tabError={tabError}
-                userEmail={user?.email ?? null}
-                profiles={null}
-                payments={null}
-                ledger={
-                  activeNav === "ledger" ? (ledgerQuery.data ?? null) : null
-                }
-                featureCosts={
-                  activeNav === "feature-costs"
-                    ? (featureCostsQuery.data ?? null)
-                    : null
-                }
-                appConfig={
-                  activeNav === "app-config"
-                    ? (appConfigQuery.data ?? null)
-                    : null
-                }
-                siteBanner={
-                  activeNav === "site-banner"
-                    ? (siteBannerQuery.data ?? null)
-                    : null
-                }
-                reportsStats={
-                  activeNav === "reports"
-                    ? (dashboardStatsQuery.data ?? null)
-                    : null
-                }
-                onConfigSaved={() => {
-                  void queryClient.invalidateQueries({
-                    queryKey: adminKeys.featureCosts(),
-                  });
-                  void queryClient.invalidateQueries({
-                    queryKey: adminKeys.appConfig(),
-                  });
-                  void queryClient.invalidateQueries({
-                    queryKey: adminKeys.siteBanner(),
-                  });
-                }}
-                currentUserId={user?.id ?? ""}
-                onUsersMutated={() => {
-                  void queryClient.invalidateQueries({
-                    queryKey: adminKeys.creditLedger(),
-                  });
-                  void queryClient.invalidateQueries({
-                    queryKey: adminKeys.dashboardStats(),
-                  });
-                }}
-              />
-            )}
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label="Doanh thu PayOS (đã paid)"
+              value={
+                statsLoading ? "…" : formatVnd(display.totals.totalRevenueVnd)
+              }
+              delta={display.totals.revenueMomPct}
+              footnote="doanh thu tháng này vs tháng trước"
+              icon={<Banknote className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Đơn đã thanh toán"
+              value={
+                statsLoading ? "…" : String(display.totals.paidOrdersCount)
+              }
+              delta={display.totals.ordersMomPct}
+              footnote="số đơn paid — tháng này vs trước"
+              icon={<ShoppingBag className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Hồ sơ mới (30 ngày)"
+              value={
+                statsLoading
+                  ? "…"
+                  : String(display.totals.newProfilesLast30Days)
+              }
+              delta={display.totals.newUsersMomPct}
+              footnote="so với 30 ngày trước đó"
+              icon={<UserPlus className="size-4" strokeWidth={1.75} />}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label="Gói lịch đang active"
+              value={
+                statsLoading ? "…" : String(display.totals.activeSubscribers)
+              }
+              footnote={`hết hạn: ${statsLoading ? "…" : display.totals.expiredSubscribers} · chưa mua: ${statsLoading ? "…" : display.totals.neverSubscribed}`}
+              icon={<CalendarDays className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Luận Bát tự (đã mở)"
+              value={
+                statsLoading ? "…" : String(display.totals.baziReadingUnlocked)
+              }
+              footnote="bazi_reading_unlocked_at"
+              icon={<BookOpen className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Tiểu vận đang active"
+              value={
+                statsLoading ? "…" : String(display.totals.tieuVanReadingActive)
+              }
+              footnote="tieu_van_reading_expires_at > now"
+              icon={<BookOpen className="size-4" strokeWidth={1.75} />}
+            />
+          </div>
+          <RevenueTrendCard
+            monthly={chartMonthly}
+            chartScaleMaxM={display.chartScaleMaxM}
+            totalRevenueVnd={display.totals.totalRevenueVnd}
+            loading={statsLoading}
+            error={null}
+          />
+          <OrdersBySkuCard
+            ordersBySku={display.totals.ordersBySku}
+            revenueByBucketVnd={display.totals.revenueByBucketVnd}
+            loading={statsLoading}
+          />
+          <p className="text-xs text-admin-text-secondary">
+            Người dùng đăng ký tổng:{" "}
+            <strong className="font-medium text-foreground">
+              {statsLoading ? "…" : display.totals.profilesCount}
+            </strong>
+            . Dữ liệu từ Edge Function{" "}
+            <code className="rounded bg-admin-canvas px-1 text-[11px]">
+              admin-dashboard-stats
+            </code>
+            .
+          </p>
+        </>
+      ) : (
+        <AdminTabPanels
+          activeNav={activeNav}
+          tabLoading={tabLoading}
+          tabError={tabError}
+          userEmail={user?.email ?? null}
+          appConfig={
+            activeNav === "app-config" ? (appConfigQuery.data ?? null) : null
+          }
+          siteBanner={
+            activeNav === "site-banner" ? (siteBannerQuery.data ?? null) : null
+          }
+          reportsStats={
+            activeNav === "reports"
+              ? (dashboardStatsQuery.data ?? null)
+              : null
+          }
+          onConfigSaved={() => {
+            void queryClient.invalidateQueries({
+              queryKey: adminKeys.appConfig(),
+            });
+            void queryClient.invalidateQueries({
+              queryKey: adminKeys.siteBanner(),
+            });
+          }}
+        />
+      )}
     </AdminShell>
   );
 }

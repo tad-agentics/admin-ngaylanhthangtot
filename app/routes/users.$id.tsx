@@ -8,6 +8,7 @@ import {
   EnvBanner,
 } from "~/components/admin/AdminShell";
 import { UserEntitlementsForm } from "~/components/admin/UserEntitlementsForm";
+import { fetchReferralLinks } from "~/lib/admin-referrals";
 import { fetchAdminUserDetail } from "~/lib/admin-users";
 import { formatVnd } from "~/lib/admin-stats";
 import { useAuth } from "~/lib/auth";
@@ -35,6 +36,12 @@ export default function UserDetailRoute() {
     queryKey: adminKeys.userDetail(id ?? "", includeLaSo),
     queryFn: () => fetchAdminUserDetail(id!, { includeLaSo }),
     enabled: Boolean(user && id),
+  });
+
+  const refereesQuery = useQuery({
+    queryKey: adminKeys.referralLinks({ referrer_id: id ?? "" }),
+    queryFn: () => fetchReferralLinks({ referrer_id: id!, limit: 20 }),
+    enabled: Boolean(user && id && detailQuery.data),
   });
 
   const displayName =
@@ -100,12 +107,29 @@ export default function UserDetailRoute() {
                   <dd>{formatDt(data.profile.tieu_van_reading_expires_at)}</dd>
                 </div>
                 <div>
-                  <dt className="text-admin-text-secondary">Mã GT / được GT bởi</dt>
+                  <dt className="text-admin-text-secondary">Mã giới thiệu</dt>
                   <dd className="font-mono text-xs">
                     {data.profile.referral_code ?? "—"}
-                    {data.referrer
-                      ? ` · ${data.referrer.email ?? data.referrer.id}`
-                      : ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Được GT bởi</dt>
+                  <dd className="text-xs">
+                    {data.referrer ? (
+                      <Link
+                        to={`/users/${data.referrer.id}`}
+                        className="font-medium text-foreground hover:underline"
+                      >
+                        {data.referrer.email ?? data.referrer.id}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                    {data.referrer?.referral_code ? (
+                      <span className="ml-1 font-mono text-admin-text-secondary">
+                        ({data.referrer.referral_code})
+                      </span>
+                    ) : null}
                   </dd>
                 </div>
                 <div>
@@ -162,22 +186,101 @@ export default function UserDetailRoute() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold">Thưởng giới thiệu (là referrer)</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold">Thưởng giới thiệu (referrer)</h2>
+                <Link
+                  to={`/referrals?tab=events&referrer=${data.profile.id}`}
+                  className="text-xs font-medium text-admin-text-secondary hover:text-foreground"
+                >
+                  Xem tất cả →
+                </Link>
+              </div>
               {data.referralRewards.length === 0 ? (
-                <p className="text-sm text-admin-text-secondary">Chưa có.</p>
+                <p className="text-sm text-admin-text-secondary">
+                  Chưa có thưởng tiền (chỉ khi referee mua gói lịch paid).
+                </p>
               ) : (
+                <div className="overflow-x-auto rounded-xl border border-admin-border-subtle">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-admin-canvas/60 text-left text-xs uppercase text-admin-text-secondary">
+                        <th className="px-3 py-2">Gói</th>
+                        <th className="px-3 py-2">Thưởng</th>
+                        <th className="px-3 py-2">Referee</th>
+                        <th className="px-3 py-2">Thời điểm</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.referralRewards.map((r) => (
+                        <tr
+                          key={r.id}
+                          className="border-t border-admin-border-subtle/80"
+                        >
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {r.package_sku}
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {formatVnd(r.reward_vnd)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Link
+                              to={`/users/${r.referee_profile_id}`}
+                              className="font-mono text-[11px] hover:underline"
+                            >
+                              {r.referee_profile_id.slice(0, 8)}…
+                            </Link>
+                          </td>
+                          <td className="px-3 py-2 text-xs whitespace-nowrap">
+                            {formatDt(r.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold">
+                  Người đã liên kết GT ({refereesQuery.data?.total ?? "…"})
+                </h2>
+                <Link
+                  to={`/referrals?tab=links&referrer=${data.profile.id}`}
+                  className="text-xs font-medium text-admin-text-secondary hover:text-foreground"
+                >
+                  Quản lý GT →
+                </Link>
+              </div>
+              {refereesQuery.isLoading ? (
+                <p className="text-sm text-admin-text-secondary">Đang tải…</p>
+              ) : null}
+              {refereesQuery.data && refereesQuery.data.links.length === 0 ? (
+                <p className="text-sm text-admin-text-secondary">
+                  Chưa có ai gắn mã / referred_by.
+                </p>
+              ) : null}
+              {refereesQuery.data && refereesQuery.data.links.length > 0 ? (
                 <ul className="divide-y divide-admin-border-subtle rounded-xl border border-admin-border-subtle bg-admin-card text-sm">
-                  {data.referralRewards.map((r) => (
-                    <li key={r.id} className="flex justify-between gap-2 px-3 py-2">
-                      <span className="font-mono text-xs">{r.package_sku}</span>
-                      <span className="tabular-nums">{formatVnd(r.reward_vnd)}</span>
+                  {refereesQuery.data.links.map((link) => (
+                    <li
+                      key={link.referee_id}
+                      className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                    >
+                      <Link
+                        to={`/users/${link.referee_id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {link.referee_email ?? link.referee_id}
+                      </Link>
                       <span className="text-xs text-admin-text-secondary">
-                        {formatDt(r.created_at)}
+                        Gói đến {formatDt(link.subscription_expires_at)}
                       </span>
                     </li>
                   ))}
                 </ul>
-              )}
+              ) : null}
             </section>
           </>
         ) : null}

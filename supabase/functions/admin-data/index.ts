@@ -1,6 +1,6 @@
 /**
- * Admin tabular reads — service_role + same JWT + ADMIN_EMAILS allowlist as admin-dashboard-stats.
- * POST JSON: { "resource": "profiles" | "payment_orders" | "credit_ledger", "limit"?: number }
+ * Admin tabular reads — service_role + JWT + ADMIN_EMAILS.
+ * POST JSON: { "resource": "profiles" | "payment_orders", "limit"?: number }
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -14,7 +14,7 @@ const corsHeaders = {
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 100;
 
-type Resource = "profiles" | "payment_orders" | "credit_ledger";
+type Resource = "profiles" | "payment_orders";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
   }
 
   const resource = body.resource as Resource;
-  const allowed: Resource[] = ["profiles", "payment_orders", "credit_ledger"];
+  const allowed: Resource[] = ["profiles", "payment_orders"];
   if (!resource || !allowed.includes(resource)) {
     return json(
       {
@@ -129,19 +129,7 @@ Deno.serve(async (req) => {
       const { data, error } = await admin
         .from("profiles")
         .select(
-          "id, email, display_name, credits_balance, subscription_expires_at, bazi_reading_unlocked_at, tieu_van_reading_expires_at, created_at",
-        )
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      return json({ rows: data ?? [] });
-    }
-
-    if (resource === "payment_orders") {
-      const { data, error } = await admin
-        .from("payment_orders")
-        .select(
-          "id, user_id, status, package_sku, amount_vnd, created_at",
+          "id, email, display_name, subscription_expires_at, bazi_reading_unlocked_at, tieu_van_reading_expires_at, created_at",
         )
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -150,8 +138,8 @@ Deno.serve(async (req) => {
     }
 
     const { data, error } = await admin
-      .from("credit_ledger")
-      .select("id, user_id, delta, balance_after, reason, created_at")
+      .from("payment_orders")
+      .select("id, user_id, status, package_sku, amount_vnd, created_at")
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) throw error;

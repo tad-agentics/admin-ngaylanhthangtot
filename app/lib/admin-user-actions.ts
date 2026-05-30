@@ -47,52 +47,11 @@ async function describeFunctionsError(
   return String(err);
 }
 
-export type AdminAddCreditsResult = {
-  ok: true;
-  action: "add_credits";
-  userId: string;
-  delta: number;
-  credits_balance: number;
-};
-
 export type AdminDeleteUserResult = {
   ok: true;
   action: "delete_user";
   userId: string;
 };
-
-export async function adminAddCredits(
-  userId: string,
-  delta: number,
-  reason?: string,
-): Promise<AdminAddCreditsResult> {
-  const { data, error } = await supabase.functions.invoke<
-    AdminAddCreditsResult | ErrorBody
-  >("admin-user-actions", {
-    method: "POST",
-    body: { action: "add_credits", userId, delta, reason },
-  });
-
-  if (data && typeof data === "object" && "error" in data) {
-    const err = data as ErrorBody;
-    if (err.error?.message) throw new Error(err.error.message);
-  }
-
-  if (error) {
-    throw new Error(await describeFunctionsError(error, "admin-user-actions"));
-  }
-
-  if (
-    !data ||
-    typeof data !== "object" ||
-    !("ok" in data) ||
-    (data as AdminAddCreditsResult).action !== "add_credits"
-  ) {
-    throw new Error("Phản hồi không hợp lệ");
-  }
-
-  return data as AdminAddCreditsResult;
-}
 
 export async function adminDeleteUser(userId: string): Promise<AdminDeleteUserResult> {
   const { data, error } = await supabase.functions.invoke<

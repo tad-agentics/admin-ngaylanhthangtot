@@ -111,7 +111,7 @@ export function RevenueTrendCard({
           </span>
           <span className="inline-flex items-center gap-2 text-admin-text-secondary">
             <span className="size-2.5 rounded-full bg-admin-chart-new ring-1 ring-admin-border-subtle" />
-            Legacy / khác
+            SKU lẻ
           </span>
         </div>
 
@@ -149,7 +149,7 @@ export function RevenueTrendCard({
 
       <p className="sr-only">
         Mười hai tháng gần nhất: doanh thu PayOS đã paid, tách gói lịch, luận
-        add-on và legacy.
+        add-on và SKU lẻ.
       </p>
 
       <div className="relative mt-8 flex gap-2 sm:gap-3">
@@ -184,7 +184,7 @@ export function RevenueTrendCard({
                   </span>
                 </p>
                 <p className="text-xs text-foreground">
-                  <span className="text-admin-text-secondary">Legacy: </span>
+                  <span className="text-admin-text-secondary">SKU lẻ: </span>
                   <span className="font-semibold tabular-nums">
                     {formatVnd(hovered.legacyRevenueVnd)}
                   </span>

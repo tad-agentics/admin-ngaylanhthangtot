@@ -20,7 +20,6 @@ export type AdminUserListItem = {
   referral_code: string | null;
   referred_by: string | null;
   referral_reward_total_vnd: number | null;
-  credits_balance: number | null;
   created_at: string;
   flags: AdminUserFlags;
 };
@@ -64,13 +63,6 @@ export type AdminUserDetailResponse = {
     package_sku: string;
     reward_vnd: number;
     checkout_referral_code: string | null;
-    created_at: string;
-  }[];
-  creditLedger: {
-    id: string;
-    delta: number;
-    balance_after: number;
-    reason: string;
     created_at: string;
   }[];
 };

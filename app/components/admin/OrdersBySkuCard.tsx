@@ -9,7 +9,7 @@ const SKU_LABELS: Record<string, string> = {
   goi_12thang: "Gói 12 tháng",
   luan_bat_tu: "Luận Bát tự",
   luan_tieu_van: "Luận Tiểu vận",
-  le: "Lẻ (legacy)",
+  le: "SKU lẻ (le)",
 };
 
 type OrdersBySkuCardProps = {
@@ -50,7 +50,7 @@ export function OrdersBySkuCard({
               </dd>
             </div>
             <div className="rounded-xl bg-admin-canvas px-3 py-2.5">
-              <dt className="text-xs text-admin-text-secondary">Legacy / khác</dt>
+              <dt className="text-xs text-admin-text-secondary">SKU lẻ</dt>
               <dd className="mt-0.5 text-sm font-semibold tabular-nums">
                 {formatVnd(revenueByBucketVnd.legacy)}
               </dd>

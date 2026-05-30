@@ -91,15 +91,8 @@ export function UserEntitlementsForm({
     >
       <h2 className="text-sm font-semibold text-foreground">Sửa entitlement</h2>
       <p className="text-xs text-admin-text-secondary">
-        Không sửa ngày sinh / lá số từ đây. Mọi thay đổi ghi{" "}
-        <code className="rounded bg-admin-canvas px-1 text-[11px]">
-          credit_ledger
-        </code>{" "}
-        (reason{" "}
-        <code className="rounded bg-admin-canvas px-1 text-[11px]">
-          admin_entitlement_adjustment
-        </code>
-        ).
+        Không sửa ngày sinh / lá số từ đây. Mọi thay đổi được ghi audit phía server
+        (gói lịch, luận Bát tự, Tiểu vận).
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">

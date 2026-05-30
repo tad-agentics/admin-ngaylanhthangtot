@@ -1,8 +1,23 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
+import {
+  appConfigRowKey,
+  isCreditRelatedAppConfigKey,
+} from "~/lib/credit-config-keys";
 import { supabase } from "~/lib/supabase";
 
-export type AdminConfigTable = "feature_credit_costs" | "app_config";
+export type AdminConfigTable = "app_config";
+
+/** Đọc app_config — dùng cho tab Cấu hình app (bỏ key lượng/credits). */
+export async function fetchAppConfigRows(): Promise<Record<string, unknown>[]> {
+  const { data, error } = await supabase.from("app_config").select("*");
+  if (error) throw error;
+  const list = ([...(data ?? [])] as Record<string, unknown>[]).filter(
+    (row) => !isCreditRelatedAppConfigKey(appConfigRowKey(row)),
+  );
+  list.sort((a, b) => appConfigRowKey(a).localeCompare(appConfigRowKey(b)));
+  return list;
+}
 
 type ErrorBody = { error?: { code?: string; message?: string } };
 

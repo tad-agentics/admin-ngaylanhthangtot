@@ -3,14 +3,13 @@ import {
   BarChart3,
   ChevronDown,
   CreditCard,
+  Gift,
   LayoutDashboard,
   LayoutPanelTop,
   Settings,
   Shield,
-  SlidersHorizontal,
   UserRound,
   Users,
-  Wallet,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 
@@ -29,17 +28,8 @@ const mainMenu: NavItem[] = [
   { id: "overview", label: "Tổng quan", icon: LayoutDashboard, to: "/", end: true },
   { id: "users", label: "Người dùng", icon: Users, to: "/users" },
   { id: "payments", label: "Giao dịch & PayOS", icon: CreditCard, to: "/orders" },
+  { id: "referrals", label: "Giới thiệu", icon: Gift, to: "/referrals" },
   { id: "reports", label: "Báo cáo", icon: BarChart3, to: "/?nav=reports" },
-];
-
-const legacyMenu: NavItem[] = [
-  { id: "ledger", label: "Sổ lượng (legacy)", icon: Wallet, to: "/?nav=ledger" },
-  {
-    id: "feature-costs",
-    label: "Giá lượng (legacy)",
-    icon: SlidersHorizontal,
-    to: "/?nav=feature-costs",
-  },
 ];
 
 const managementMenu: NavItem[] = [
@@ -80,7 +70,8 @@ function NavSection({
           const active =
             activeId === id ||
             (id === "users" && location.pathname.startsWith("/users")) ||
-            (id === "payments" && location.pathname === "/orders");
+            (id === "payments" && location.pathname === "/orders") ||
+            (id === "referrals" && location.pathname === "/referrals");
 
           const className = cn(
             "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors no-underline",
@@ -104,14 +95,14 @@ function NavSection({
                 </NavLink>
               ) : (
                 <Link to={to} className={className} aria-current={active ? "page" : undefined}>
-                <Icon
-                  className={cn(
-                    "size-[18px] shrink-0",
-                    active ? "text-foreground" : "text-admin-text-secondary",
-                  )}
-                  strokeWidth={1.75}
-                />
-                {label}
+                  <Icon
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      active ? "text-foreground" : "text-admin-text-secondary",
+                    )}
+                    strokeWidth={1.75}
+                  />
+                  {label}
                 </Link>
               )}
             </li>
@@ -138,7 +129,6 @@ export function AdminSidebar({
 
       <nav className="mt-6 flex-1 overflow-y-auto pb-6">
         <NavSection title="Menu chính" items={mainMenu} activeId={activeId} />
-        <NavSection title="Legacy (lượng)" items={legacyMenu} activeId={activeId} />
         <NavSection title="Quản trị" items={managementMenu} activeId={activeId} />
         <div className="mt-6 border-t border-admin-border-subtle pt-6">
           <ul className="space-y-0.5">

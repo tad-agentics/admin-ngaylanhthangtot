@@ -4,17 +4,18 @@ import {
   type AdminConfigTable,
   patchAdminConfigRow,
 } from "~/lib/admin-config";
+import { appConfigRowKey } from "~/lib/credit-config-keys";
 import { cn } from "~/lib/utils";
-
-/** Giá tính năng: admin chỉ sửa credit_cost; feature_key và cột khách chỉ đọc. */
-const FEATURE_CREDIT_COSTS_EDITABLE = new Set(["credit_cost"]);
 
 const READONLY_KEYS = new Set([
   "id",
+  "config_key",
   "created_at",
   "updated_at",
   "last_modified",
 ]);
+
+const APP_CONFIG_EDITABLE = new Set(["value"]);
 
 function stableStringify(v: unknown): string {
   try {
@@ -38,29 +39,21 @@ function isBoolField(key: string, sample: unknown): boolean {
 
 function isNumberField(key: string, sample: unknown): boolean {
   if (typeof sample === "number" && Number.isFinite(sample)) return true;
-  if (
-    key.endsWith("_cost") ||
-    key.endsWith("_costs") ||
-    key === "credits" ||
-    key === "sort_order" ||
-    key === "display_order"
-  ) {
+  if (key === "sort_order" || key === "display_order") {
     return !isJsonField(key, sample) && typeof sample !== "boolean";
   }
   return false;
+}
+
+function isEditableConfigKey(table: AdminConfigTable, key: string): boolean {
+  if (table === "app_config") return APP_CONFIG_EDITABLE.has(key);
+  return !READONLY_KEYS.has(key);
 }
 
 function parseJsonField(text: string): unknown {
   const t = text.trim();
   if (t === "") return null;
   return JSON.parse(t) as unknown;
-}
-
-function isEditableConfigKey(table: AdminConfigTable, key: string): boolean {
-  if (table === "feature_credit_costs") {
-    return FEATURE_CREDIT_COSTS_EDITABLE.has(key);
-  }
-  return true;
 }
 
 function formatReadonlyValue(val: unknown): string {
@@ -82,115 +75,72 @@ type EditableRowProps = {
 };
 
 function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
-  const id = String(row.id ?? "");
+  const configKey = appConfigRowKey(row);
   const keys = useMemo(
-    () =>
-      Object.keys(row)
-        .filter((k) => !READONLY_KEYS.has(k))
-        .sort(),
-    [row],
+    () => Object.keys(row).filter((k) => isEditableConfigKey(table, k)),
+    [row, table],
   );
 
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...row }));
   const [jsonTexts, setJsonTexts] = useState<Record<string, string>>(() => {
-    const o: Record<string, string> = {};
-    for (const k of Object.keys(row)) {
-      if (READONLY_KEYS.has(k)) continue;
+    const init: Record<string, string> = {};
+    for (const k of keys) {
       if (isJsonField(k, row[k])) {
-        try {
-          o[k] = JSON.stringify(row[k], null, 2);
-        } catch {
-          o[k] = String(row[k]);
-        }
+        init[k] = stableStringify(row[k]);
       }
     }
-    return o;
+    return init;
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft({ ...row });
-    const o: Record<string, string> = {};
-    for (const k of Object.keys(row)) {
-      if (READONLY_KEYS.has(k)) continue;
+    const init: Record<string, string> = {};
+    for (const k of keys) {
       if (isJsonField(k, row[k])) {
-        try {
-          o[k] = JSON.stringify(row[k], null, 2);
-        } catch {
-          o[k] = String(row[k]);
-        }
+        init[k] = stableStringify(row[k]);
       }
     }
-    setJsonTexts(o);
-  }, [row]);
-
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+    setJsonTexts(init);
+  }, [row, keys]);
 
   const hasChanges = useMemo(() => {
     for (const k of keys) {
-      if (!isEditableConfigKey(table, k)) continue;
       if (isJsonField(k, row[k])) {
-        let parsed: unknown;
         try {
-          parsed = parseJsonField(jsonTexts[k] ?? "");
+          const parsed = parseJsonField(jsonTexts[k] ?? "");
+          if (stableStringify(parsed) !== stableStringify(row[k])) return true;
         } catch {
           return true;
         }
-        if (stableStringify(parsed) !== stableStringify(row[k])) return true;
       } else if (stableStringify(draft[k]) !== stableStringify(row[k])) {
         return true;
       }
     }
     return false;
-  }, [keys, row, draft, jsonTexts, table]);
+  }, [keys, row, draft, jsonTexts]);
 
   const save = useCallback(async () => {
-    setMessage(null);
     setError(null);
+    setMessage(null);
     const patch: Record<string, unknown> = {};
-
-    try {
-      for (const k of keys) {
-        if (!isEditableConfigKey(table, k)) continue;
-        if (isJsonField(k, row[k])) {
-          const raw = jsonTexts[k] ?? "";
-          let parsed: unknown;
-          try {
-            parsed = parseJsonField(raw);
-          } catch {
-            throw new Error(`Cột “${k}”: JSON không hợp lệ`);
-          }
+    for (const k of keys) {
+      if (READONLY_KEYS.has(k)) continue;
+      if (isJsonField(k, row[k])) {
+        try {
+          const parsed = parseJsonField(jsonTexts[k] ?? "");
           if (stableStringify(parsed) !== stableStringify(row[k])) {
             patch[k] = parsed;
           }
-        } else if (isBoolField(k, row[k])) {
-          const next = Boolean(draft[k]);
-          if (next !== row[k]) patch[k] = next;
-        } else if (isNumberField(k, row[k])) {
-          const raw = String(draft[k] ?? "").trim();
-          let next: number | null;
-          if (raw === "") next = null;
-          else {
-            const n = Number(raw);
-            if (!Number.isFinite(n)) {
-              throw new Error(`Cột “${k}”: cần số hợp lệ`);
-            }
-            next = n;
-          }
-          if (stableStringify(next) !== stableStringify(row[k])) {
-            patch[k] = next;
-          }
-        } else {
-          const next = draft[k];
-          if (stableStringify(next) !== stableStringify(row[k])) {
-            patch[k] = next;
-          }
+        } catch {
+          setError(`JSON không hợp lệ ở cột ${k}`);
+          return;
         }
+      } else if (stableStringify(draft[k]) !== stableStringify(row[k])) {
+        patch[k] = draft[k];
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      return;
     }
 
     if (Object.keys(patch).length === 0) {
@@ -200,7 +150,7 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
 
     setSaving(true);
     try {
-      await patchAdminConfigRow(table, id, patch);
+      await patchAdminConfigRow(table, configKey, patch);
       setMessage("Đã lưu");
       onSaved();
     } catch (e) {
@@ -208,16 +158,13 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
     } finally {
       setSaving(false);
     }
-  }, [keys, row, draft, jsonTexts, table, id, onSaved]);
-
-  const missingCreditCost =
-    table === "feature_credit_costs" && !("credit_cost" in row);
+  }, [keys, row, draft, jsonTexts, table, configKey, onSaved]);
 
   return (
     <div className="space-y-3 rounded-xl border border-admin-border-subtle bg-admin-card/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-xs text-admin-text-secondary" title={id}>
-          id: {id.length > 14 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id}
+        <p className="font-mono text-xs font-medium text-foreground" title={configKey}>
+          {configKey || "—"}
         </p>
         <button
           type="button"
@@ -233,13 +180,6 @@ function EditableConfigRow({ table, row, onSaved }: EditableRowProps) {
           {saving ? "Đang lưu…" : "Lưu thay đổi"}
         </button>
       </div>
-      {missingCreditCost ? (
-        <p className="text-xs text-amber-800">
-          Bản ghi không có cột{" "}
-          <code className="rounded bg-amber-100/80 px-1">credit_cost</code> — kiểm tra
-          schema hoặc đổi tên cột trong code.
-        </p>
-      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {keys.map((k) => {
           const readOnly = !isEditableConfigKey(table, k);

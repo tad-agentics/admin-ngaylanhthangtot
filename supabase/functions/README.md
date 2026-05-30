@@ -10,8 +10,10 @@ All other admin + app functions live in **`Ngay-lanh-thang-tot`** and must be de
 
 ```bash
 cd ../Ngay-lanh-thang-tot
-supabase functions deploy admin-dashboard-stats admin-site-banner admin-users admin-user-entitlements admin-orders
+supabase functions deploy admin-dashboard-stats admin-site-banner admin-users admin-user-entitlements admin-orders admin-referrals
 # …plus app functions as needed
 ```
 
 Set secrets on the shared project: `ADMIN_EMAILS`, `ALLOWED_ORIGIN` (include admin app URL, e.g. `https://admin.ngaylanhthangtot.vn`).
+
+**Direction C:** Admin không chỉnh cài đặt lượng/credits (`starter_credits`, `referral_bonus_credits`, …). `admin-config` chỉ sửa `app_config.value` theo `config_key` (trừ key credit).

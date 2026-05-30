@@ -1,7 +1,6 @@
 /**
  * Admin config writes — JWT + ADMIN_EMAILS + service_role.
- * POST JSON: { "table": "feature_credit_costs" | "app_config", "id": "<uuid>", "patch": { ... } }
- * Only allowlisted columns are applied; id cannot be changed here.
+ * POST JSON: { "table": "app_config", "id": "<config_key>", "patch": { "value": "..." } }
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -12,22 +11,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const APP_CONFIG_PATCH = new Set(["value"]);
 
-/** feature_credit_costs: chỉ cho phép đổi giá lượng (không đổi feature_key / metadata / …). */
-const FEATURE_CREDIT_COSTS_PATCH = new Set(["credit_cost"]);
-
-/** Columns admins may change on app_config. */
-const APP_CONFIG_PATCH = new Set([
-  "key",
-  "value",
-  "description",
-  "label",
-  "is_active",
+const CREDIT_APP_CONFIG_KEYS = new Set([
+  "starter_credits",
+  "credit_expiry_months",
+  "referral_bonus_credits",
+  "pivot_transition_until",
 ]);
 
-type ConfigTable = "feature_credit_costs" | "app_config";
+function isCreditRelatedAppConfigKey(raw: string): boolean {
+  const k = raw.trim().toLowerCase();
+  if (!k) return false;
+  if (CREDIT_APP_CONFIG_KEYS.has(k)) return true;
+  if (k.includes("credit")) return true;
+  return false;
+}
+
+type ConfigTable = "app_config";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -44,18 +45,11 @@ function parseAdminEmails(raw: string | undefined): string[] {
     .filter((p) => p.includes("@"));
 }
 
-function sanitizePatch(
-  table: ConfigTable,
-  patch: Record<string, unknown>,
-): Record<string, unknown> {
-  const allowed =
-    table === "feature_credit_costs"
-      ? FEATURE_CREDIT_COSTS_PATCH
-      : APP_CONFIG_PATCH;
+function sanitizePatch(patch: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(patch)) {
-    if (k === "id" || k === "created_at" || k === "updated_at") continue;
-    if (!allowed.has(k)) continue;
+    if (k === "config_key" || k === "updated_at") continue;
+    if (!APP_CONFIG_PATCH.has(k)) continue;
     out[k] = v;
   }
   return out;
@@ -104,6 +98,7 @@ async function requireAdmin(
       403,
     );
   }
+
   return { email };
 }
 
@@ -149,24 +144,35 @@ Deno.serve(async (req) => {
   }
 
   const table = body.table as ConfigTable;
-  const tables: ConfigTable[] = ["feature_credit_costs", "app_config"];
-  if (!table || !tables.includes(table)) {
+  if (table !== "app_config") {
     return json(
       {
         error: {
           code: "BAD_REQUEST",
-          message: `table must be one of: ${tables.join(", ")}`,
+          message: "table must be app_config",
         },
       },
       400,
     );
   }
 
-  const id = typeof body.id === "string" ? body.id.trim() : "";
-  if (!id || !UUID_RE.test(id)) {
+  const configKey = typeof body.id === "string" ? body.id.trim() : "";
+  if (!configKey) {
     return json(
-      { error: { code: "BAD_REQUEST", message: "id must be a UUID" } },
+      { error: { code: "BAD_REQUEST", message: "id must be app_config.config_key" } },
       400,
+    );
+  }
+
+  if (isCreditRelatedAppConfigKey(configKey)) {
+    return json(
+      {
+        error: {
+          code: "FORBIDDEN",
+          message: "Credit/lượng app_config keys cannot be edited from admin.",
+        },
+      },
+      403,
     );
   }
 
@@ -178,13 +184,13 @@ Deno.serve(async (req) => {
     );
   }
 
-  const patch = sanitizePatch(table, rawPatch as Record<string, unknown>);
+  const patch = sanitizePatch(rawPatch as Record<string, unknown>);
   if (Object.keys(patch).length === 0) {
     return json(
       {
         error: {
           code: "BAD_REQUEST",
-          message: "patch is empty after allowlist — no updatable fields matched",
+          message: "patch must include value",
         },
       },
       400,
@@ -199,7 +205,7 @@ Deno.serve(async (req) => {
     const { data, error } = await admin
       .from(table)
       .update(patch)
-      .eq("id", id)
+      .eq("config_key", configKey)
       .select()
       .maybeSingle();
 
@@ -210,7 +216,7 @@ Deno.serve(async (req) => {
         {
           error: {
             code: "NOT_FOUND",
-            message: "No row updated — check id or RLS/table name",
+            message: "No row updated — check config_key",
           },
         },
         404,

@@ -163,6 +163,15 @@ export default function UserDetailRoute() {
                   </dd>
                 </div>
                 <div>
+                  <dt className="text-admin-text-secondary">Hỏi AI (luận ngày)</dt>
+                  <dd className="tabular-nums">
+                    {data.day_luan_ai_ask_count ?? 0}
+                    <span className="ml-1 text-xs text-admin-text-secondary">
+                      lần
+                    </span>
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-admin-text-secondary">Lá số recompute</dt>
                   <dd>{data.profile.la_so_recompute_status ?? "—"}</dd>
                 </div>

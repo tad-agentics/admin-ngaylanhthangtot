@@ -102,6 +102,9 @@ export default function UsersSearchRoute() {
                     Flags
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
+                    Hỏi AI (luận ngày)
+                  </th>
+                  <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
                     Mã GT
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary" />
@@ -137,6 +140,12 @@ export default function UsersSearchRoute() {
                           </span>
                         ) : null}
                       </div>
+                    </td>
+                    <td
+                      className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
+                      title="Số lần hỏi AI thành công trong mục luận giải ngày (day-luan-chat)"
+                    >
+                      {u.day_luan_ai_ask_count ?? 0}
                     </td>
                     <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 font-mono text-xs">
                       {u.referral_code ?? "—"}

@@ -22,6 +22,8 @@ export type AdminUserListItem = {
   referral_reward_total_vnd: number | null;
   created_at: string;
   flags: AdminUserFlags;
+  /** Completed follow-up asks in luận giải ngày (day-luan-chat). */
+  day_luan_ai_ask_count: number;
 };
 
 export type AdminUserSearchResponse = {
@@ -54,6 +56,7 @@ export type AdminUserDetailResponse = {
     la_so?: unknown;
   };
   flags: AdminUserFlags;
+  day_luan_ai_ask_count: number;
   referrer: { id: string; email: string | null; referral_code: string | null } | null;
   paymentOrders: AdminPaymentOrderSummary[];
   referralRewards: {

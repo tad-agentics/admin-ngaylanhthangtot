@@ -10,6 +10,8 @@ export type AdminProfileRow = {
   display_name: string | null;
   credits_balance: number | null;
   subscription_expires_at: string | null;
+  bazi_reading_unlocked_at: string | null;
+  tieu_van_reading_expires_at: string | null;
   created_at: string;
 };
 

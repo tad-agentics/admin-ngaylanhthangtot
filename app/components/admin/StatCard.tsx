@@ -23,7 +23,7 @@ function MiniSparkline({ className }: { className?: string }) {
 type StatCardProps = {
   label: string;
   value: string;
-  delta: string;
+  delta?: string;
   footnote?: string;
   icon?: ReactNode;
 };
@@ -43,7 +43,9 @@ export function StatCard({ label, value, delta, footnote, icon }: StatCardProps)
           {icon}
         </span>
         <div className="text-right">
-          <p className="text-sm font-semibold text-admin-positive">{delta}</p>
+          {delta ? (
+            <p className="text-sm font-semibold text-admin-positive">{delta}</p>
+          ) : null}
           {footnote ? (
             <p className="text-[11px] text-admin-text-secondary">{footnote}</p>
           ) : null}

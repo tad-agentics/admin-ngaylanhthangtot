@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
       const { data, error } = await admin
         .from("profiles")
         .select(
-          "id, email, display_name, credits_balance, subscription_expires_at, created_at",
+          "id, email, display_name, credits_balance, subscription_expires_at, bazi_reading_unlocked_at, tieu_van_reading_expires_at, created_at",
         )
         .order("created_at", { ascending: false })
         .limit(limit);

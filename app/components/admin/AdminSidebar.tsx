@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { Link, NavLink, useLocation } from "react-router";
 
 import { NgayLanhLogoLockupCompact } from "~/components/brand/NgayLanhLogoLockupCompact";
 import { cn } from "~/lib/utils";
@@ -20,24 +21,36 @@ type NavItem = {
   id: string;
   label: string;
   icon: LucideIcon;
+  to: string;
+  end?: boolean;
 };
 
 const mainMenu: NavItem[] = [
-  { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
-  { id: "users", label: "Người dùng", icon: Users },
-  { id: "payments", label: "Giao dịch & PayOS", icon: CreditCard },
-  { id: "reports", label: "Báo cáo", icon: BarChart3 },
+  { id: "overview", label: "Tổng quan", icon: LayoutDashboard, to: "/", end: true },
+  { id: "users", label: "Người dùng", icon: Users, to: "/users" },
+  { id: "payments", label: "Giao dịch & PayOS", icon: CreditCard, to: "/orders" },
+  { id: "reports", label: "Báo cáo", icon: BarChart3, to: "/?nav=reports" },
 ];
 
-const creditsMenu: NavItem[] = [
-  { id: "ledger", label: "Sổ lượng (ledger)", icon: Wallet },
-  { id: "feature-costs", label: "Giá tính năng", icon: SlidersHorizontal },
+const legacyMenu: NavItem[] = [
+  { id: "ledger", label: "Sổ lượng (legacy)", icon: Wallet, to: "/?nav=ledger" },
+  {
+    id: "feature-costs",
+    label: "Giá lượng (legacy)",
+    icon: SlidersHorizontal,
+    to: "/?nav=feature-costs",
+  },
 ];
 
 const managementMenu: NavItem[] = [
-  { id: "site-banner", label: "Banner đầu trang", icon: LayoutPanelTop },
-  { id: "app-config", label: "Cấu hình app", icon: Settings },
-  { id: "roles", label: "Vai trò & quyền", icon: Shield },
+  {
+    id: "site-banner",
+    label: "Banner đầu trang",
+    icon: LayoutPanelTop,
+    to: "/?nav=site-banner",
+  },
+  { id: "app-config", label: "Cấu hình app", icon: Settings, to: "/?nav=app-config" },
+  { id: "roles", label: "Vai trò & quyền", icon: Shield, to: "/?nav=roles" },
 ];
 
 type AdminSidebarProps = {
@@ -50,34 +63,47 @@ function NavSection({
   title,
   items,
   activeId,
-  onNavigate,
 }: {
   title: string;
   items: NavItem[];
   activeId: string;
-  onNavigate?: (id: string) => void;
 }) {
+  const location = useLocation();
+
   return (
     <div className="mt-6 first:mt-0">
       <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-admin-text-secondary/80">
         {title}
       </p>
       <ul className="mt-2 space-y-0.5">
-        {items.map(({ id, label, icon: Icon }) => {
-          const active = activeId === id;
+        {items.map(({ id, label, icon: Icon, to, end }) => {
+          const active =
+            activeId === id ||
+            (id === "users" && location.pathname.startsWith("/users")) ||
+            (id === "payments" && location.pathname === "/orders");
+
+          const className = cn(
+            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors no-underline",
+            active
+              ? "bg-admin-card text-foreground"
+              : "text-admin-text-secondary hover:bg-black/[0.03] hover:text-foreground",
+          );
+
           return (
             <li key={id}>
-              <button
-                type="button"
-                onClick={() => onNavigate?.(id)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                  active
-                    ? "bg-admin-card text-foreground"
-                    : "text-admin-text-secondary hover:bg-black/[0.03] hover:text-foreground",
-                )}
-                aria-current={active ? "page" : undefined}
-              >
+              {end ? (
+                <NavLink to={to} end className={className}>
+                  <Icon
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      active ? "text-foreground" : "text-admin-text-secondary",
+                    )}
+                    strokeWidth={1.75}
+                  />
+                  {label}
+                </NavLink>
+              ) : (
+                <Link to={to} className={className} aria-current={active ? "page" : undefined}>
                 <Icon
                   className={cn(
                     "size-[18px] shrink-0",
@@ -86,7 +112,8 @@ function NavSection({
                   strokeWidth={1.75}
                 />
                 {label}
-              </button>
+                </Link>
+              )}
             </li>
           );
         })}
@@ -97,46 +124,29 @@ function NavSection({
 
 export function AdminSidebar({
   activeId,
-  onNavigate,
   onSignOut,
 }: AdminSidebarProps) {
   return (
     <aside className="flex w-[min(100%,280px)] shrink-0 flex-col border-r border-admin-border-subtle bg-admin-sidebar px-4 py-5">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 rounded-2xl border border-admin-border-subtle bg-admin-card px-2 py-2.5 text-left transition hover:bg-admin-canvas"
+      <Link
+        to="/"
+        className="flex w-full items-center gap-2 rounded-2xl border border-admin-border-subtle bg-admin-card px-2 py-2.5 no-underline transition hover:bg-admin-canvas"
       >
         <NgayLanhLogoLockupCompact className="min-w-0 flex-1" markSize={44} />
         <ChevronDown className="size-4 shrink-0 self-center text-admin-text-secondary" />
-      </button>
+      </Link>
 
       <nav className="mt-6 flex-1 overflow-y-auto pb-6">
-        <NavSection
-          title="Menu chính"
-          items={mainMenu}
-          activeId={activeId}
-          onNavigate={onNavigate}
-        />
-        <NavSection
-          title="Lượng & giá"
-          items={creditsMenu}
-          activeId={activeId}
-          onNavigate={onNavigate}
-        />
-        <NavSection
-          title="Quản trị"
-          items={managementMenu}
-          activeId={activeId}
-          onNavigate={onNavigate}
-        />
+        <NavSection title="Menu chính" items={mainMenu} activeId={activeId} />
+        <NavSection title="Legacy (lượng)" items={legacyMenu} activeId={activeId} />
+        <NavSection title="Quản trị" items={managementMenu} activeId={activeId} />
         <div className="mt-6 border-t border-admin-border-subtle pt-6">
           <ul className="space-y-0.5">
             <li>
-              <button
-                type="button"
-                onClick={() => onNavigate?.("settings")}
+              <Link
+                to="/?nav=settings"
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors no-underline",
                   activeId === "settings"
                     ? "bg-admin-card text-foreground"
                     : "text-admin-text-secondary hover:bg-black/[0.03] hover:text-foreground",
@@ -147,7 +157,7 @@ export function AdminSidebar({
                   strokeWidth={1.75}
                 />
                 Cài đặt
-              </button>
+              </Link>
             </li>
           </ul>
         </div>

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 import { ConfigRowsEditor } from "~/components/admin/ConfigRowsEditor";
 import { SiteBannerAdminPanel } from "~/components/admin/SiteBannerAdminPanel";
-import { UsersAdminPanel } from "~/components/admin/UsersAdminPanel";
 import type {
   AdminLedgerRow,
   AdminPaymentRow,
@@ -152,68 +152,30 @@ export function AdminTabPanels({
     );
   }
 
-  if (activeNav === "users" && profiles) {
+  if (activeNav === "users") {
     return (
-      <UsersAdminPanel
-        profiles={profiles}
-        currentUserId={currentUserId}
-        onMutateSuccess={() => onUsersMutated?.()}
-      />
+      <div className="rounded-2xl border border-admin-border-subtle bg-admin-card px-6 py-8 text-sm text-admin-text-secondary">
+        Danh sách người dùng đã chuyển sang{" "}
+        <Link to="/users" className="font-medium text-foreground underline">
+          /users
+        </Link>{" "}
+        (tìm kiếm + entitlement qua{" "}
+        <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-users</code>
+        ).
+      </div>
     );
   }
 
-  if (activeNav === "payments" && payments) {
+  if (activeNav === "payments") {
     return (
-      <div className="space-y-2">
-        <p className="text-sm text-admin-text-secondary">
-          100 đơn gần nhất (mọi trạng thái).
-        </p>
-        <TableWrap>
-          <thead>
-            <tr>
-              <Th>Đơn</Th>
-              <Th>User</Th>
-              <Th>Trạng thái</Th>
-              <Th>SKU</Th>
-              <Th>Số tiền</Th>
-              <Th>Tạo</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {payments.map((o) => (
-              <tr key={o.id} className="hover:bg-black/[0.02]">
-                <Td className="font-mono text-xs" title={o.id}>
-                  {shortId(o.id)}
-                </Td>
-                <Td className="font-mono text-xs" title={o.user_id}>
-                  {shortId(o.user_id)}
-                </Td>
-                <Td>
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-xs font-medium ${
-                      o.status === "paid"
-                        ? "bg-emerald-100 text-emerald-900"
-                        : "bg-admin-canvas text-admin-text-secondary"
-                    }`}
-                  >
-                    {o.status}
-                  </span>
-                </Td>
-                <Td className="font-mono text-xs">{o.package_sku}</Td>
-                <Td className="tabular-nums">
-                  {o.amount_vnd != null ? formatVnd(o.amount_vnd) : "—"}
-                </Td>
-                <Td className="whitespace-nowrap text-xs">
-                  {formatDt(o.created_at)}
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </TableWrap>
-        {payments.length === 0 ? (
-          <p className="text-sm text-admin-text-secondary">Chưa có đơn.</p>
-        ) : null}
-        {edgeHint}
+      <div className="rounded-2xl border border-admin-border-subtle bg-admin-card px-6 py-8 text-sm text-admin-text-secondary">
+        Đơn hàng đã chuyển sang{" "}
+        <Link to="/orders" className="font-medium text-foreground underline">
+          /orders
+        </Link>{" "}
+        (
+        <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-orders</code>
+        ).
       </div>
     );
   }
@@ -280,28 +242,38 @@ export function AdminTabPanels({
     return (
       <div className="space-y-3">
         <p className="text-sm text-admin-text-secondary">
-          Doanh thu theo tháng (12 tháng gần nhất), cùng nguồn với biểu đồ Tổng quan.
+          Doanh thu theo tháng (12 tháng gần nhất), cùng nguồn với biểu đồ Tổng quan
+          (Direction C: gói lịch / luận add-on / legacy).
         </p>
         <TableWrap>
           <thead>
             <tr>
               <Th>Tháng</Th>
-              <Th>Gói lẻ</Th>
-              <Th>Gói thời hạn</Th>
+              <Th>Gói lịch</Th>
+              <Th>Luận add-on</Th>
+              <Th>Legacy</Th>
               <Th>Tổng</Th>
             </tr>
           </thead>
           <tbody>
             {m.map((row) => {
-              const total = row.leRevenueVnd + row.subscriptionRevenueVnd;
+              const total =
+                row.subscriptionRevenueVnd +
+                row.addonRevenueVnd +
+                row.legacyRevenueVnd;
               return (
                 <tr key={row.key} className="hover:bg-black/[0.02]">
                   <Td className="font-medium">
                     {row.label} ({row.key})
                   </Td>
-                  <Td className="tabular-nums">{formatVnd(row.leRevenueVnd)}</Td>
                   <Td className="tabular-nums">
                     {formatVnd(row.subscriptionRevenueVnd)}
+                  </Td>
+                  <Td className="tabular-nums">
+                    {formatVnd(row.addonRevenueVnd)}
+                  </Td>
+                  <Td className="tabular-nums">
+                    {formatVnd(row.legacyRevenueVnd)}
                   </Td>
                   <Td className="tabular-nums font-medium">{formatVnd(total)}</Td>
                 </tr>

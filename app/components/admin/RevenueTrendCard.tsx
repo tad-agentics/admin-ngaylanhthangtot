@@ -24,6 +24,12 @@ function buildYTicks(maxM: number) {
   return [4, 3, 2, 1, 0].map((i) => Math.round((step * i + Number.EPSILON) * 100) / 100);
 }
 
+function monthTotalVnd(d: AdminMonthlyDatum) {
+  return (
+    d.subscriptionRevenueVnd + d.addonRevenueVnd + d.legacyRevenueVnd
+  );
+}
+
 export function RevenueTrendCard({
   monthly,
   chartScaleMaxM,
@@ -40,7 +46,7 @@ export function RevenueTrendCard({
     return Math.max(
       chartScaleMaxM,
       0.000_001,
-      ...monthly.map((d) => d.leM + d.subscriptionM),
+      ...monthly.map((d) => d.subscriptionM + d.addonM + d.legacyM),
     );
   }, [chartScaleMaxM, monthly]);
 
@@ -48,17 +54,20 @@ export function RevenueTrendCard({
     return monthly.map((d) => {
       const scale = ROWS / maxM;
       let nSub = Math.round(d.subscriptionM * scale);
-      let nLe = Math.round(d.leM * scale);
-      const total = nSub + nLe;
+      let nAddon = Math.round(d.addonM * scale);
+      let nLegacy = Math.round(d.legacyM * scale);
+      const total = nSub + nAddon + nLegacy;
       if (total > ROWS) {
         const r = ROWS / total;
         nSub = Math.max(0, Math.floor(nSub * r));
-        nLe = ROWS - nSub;
+        nAddon = Math.max(0, Math.floor(nAddon * r));
+        nLegacy = ROWS - nSub - nAddon;
       }
       return {
         ...d,
         nSub,
-        nLe,
+        nAddon,
+        nLegacy,
       };
     });
   }, [monthly, maxM]);
@@ -93,12 +102,16 @@ export function RevenueTrendCard({
       <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="inline-flex items-center gap-2 text-admin-text-secondary">
-            <span className="size-2.5 rounded-full bg-admin-chart-new ring-1 ring-admin-border-subtle" />
-            Gói lẻ (lượng)
+            <span className="size-2.5 rounded-full bg-admin-chart-existing" />
+            Gói lịch
           </span>
           <span className="inline-flex items-center gap-2 text-admin-text-secondary">
-            <span className="size-2.5 rounded-full bg-admin-chart-existing" />
-            Gói thời hạn
+            <span className="size-2.5 rounded-full bg-admin-chart-addon" />
+            Luận add-on
+          </span>
+          <span className="inline-flex items-center gap-2 text-admin-text-secondary">
+            <span className="size-2.5 rounded-full bg-admin-chart-new ring-1 ring-admin-border-subtle" />
+            Legacy / khác
           </span>
         </div>
 
@@ -135,8 +148,8 @@ export function RevenueTrendCard({
       </div>
 
       <p className="sr-only">
-        Mười hai tháng gần nhất: doanh thu PayOS đã paid, tách gói lẻ và gói
-        thời hạn.
+        Mười hai tháng gần nhất: doanh thu PayOS đã paid, tách gói lịch, luận
+        add-on và legacy.
       </p>
 
       <div className="relative mt-8 flex gap-2 sm:gap-3">
@@ -154,21 +167,30 @@ export function RevenueTrendCard({
                 left: `calc(${(hoverIndex! + 0.5) * (100 / columns.length)}% )`,
               }}
             >
-              <div className="min-w-[160px] rounded-xl border border-admin-border-subtle bg-admin-card px-3 py-2.5">
+              <div className="min-w-[180px] rounded-xl border border-admin-border-subtle bg-admin-card px-3 py-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-admin-text-secondary">
                   {hovered.label}
                 </p>
                 <p className="mt-1.5 text-xs text-foreground">
-                  <span className="text-admin-text-secondary">Gói lẻ: </span>
-                  <span className="font-semibold tabular-nums">
-                    {formatVnd(hovered.leRevenueVnd)}
-                  </span>
-                </p>
-                <p className="text-xs text-foreground">
-                  <span className="text-admin-text-secondary">Thời hạn: </span>
+                  <span className="text-admin-text-secondary">Gói lịch: </span>
                   <span className="font-semibold tabular-nums">
                     {formatVnd(hovered.subscriptionRevenueVnd)}
                   </span>
+                </p>
+                <p className="text-xs text-foreground">
+                  <span className="text-admin-text-secondary">Luận: </span>
+                  <span className="font-semibold tabular-nums">
+                    {formatVnd(hovered.addonRevenueVnd)}
+                  </span>
+                </p>
+                <p className="text-xs text-foreground">
+                  <span className="text-admin-text-secondary">Legacy: </span>
+                  <span className="font-semibold tabular-nums">
+                    {formatVnd(hovered.legacyRevenueVnd)}
+                  </span>
+                </p>
+                <p className="mt-1 border-t border-admin-border-subtle pt-1 text-xs font-medium text-foreground">
+                  {formatVnd(monthTotalVnd(hovered))}
                 </p>
               </div>
               <div
@@ -194,9 +216,15 @@ export function RevenueTrendCard({
                     className="h-2 w-full shrink-0 rounded-[2px] bg-admin-chart-existing sm:h-2.5"
                   />
                 ))}
-                {Array.from({ length: col.nLe }).map((_, j) => (
+                {Array.from({ length: col.nAddon }).map((_, j) => (
                   <div
-                    key={`le-${j}`}
+                    key={`addon-${j}`}
+                    className="h-2 w-full shrink-0 rounded-[2px] bg-admin-chart-addon sm:h-2.5"
+                  />
+                ))}
+                {Array.from({ length: col.nLegacy }).map((_, j) => (
+                  <div
+                    key={`legacy-${j}`}
                     className="h-2 w-full shrink-0 rounded-[2px] bg-admin-chart-new ring-1 ring-admin-border-subtle/80 sm:h-2.5"
                   />
                 ))}

@@ -4,20 +4,15 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { Banknote, ShoppingBag, UserPlus } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
+import { Banknote, BookOpen, CalendarDays, ShoppingBag, UserPlus } from "lucide-react";
 
-import { AdminSidebar } from "~/components/admin/AdminSidebar";
+import { AdminShell, EnvBanner, AdminForbiddenHint } from "~/components/admin/AdminShell";
 import { AdminTabPanels } from "~/components/admin/AdminTabPanels";
-import { AdminTopBar } from "~/components/admin/AdminTopBar";
+import { OrdersBySkuCard } from "~/components/admin/OrdersBySkuCard";
 import { RevenueTrendCard } from "~/components/admin/RevenueTrendCard";
 import { StatCard } from "~/components/admin/StatCard";
-import {
-  type AdminLedgerRow,
-  type AdminPaymentRow,
-  type AdminProfileRow,
-  fetchAdminTableRows,
-} from "~/lib/admin-data";
+import { type AdminLedgerRow, fetchAdminTableRows } from "~/lib/admin-data";
 import {
   fetchAppConfigRows,
   fetchFeatureCreditCostsRows,
@@ -31,25 +26,19 @@ import {
 import { useAuth } from "~/lib/auth";
 import { adminKeys } from "~/lib/query-keys";
 
-function EnvBanner({ ok }: { ok: boolean }) {
-  if (ok) return null;
-  return (
-    <div className="rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-      <p className="font-medium">Chưa cấu hình Supabase</p>
-      <p className="mt-1 text-amber-900/80">
-        Tạo <code className="rounded bg-amber-100/80 px-1">.env.local</code> từ{" "}
-        <code className="rounded bg-amber-100/80 px-1">.env.example</code>.
-      </p>
-    </div>
-  );
-}
-
 const emptyStats: AdminDashboardPayload = {
   totals: {
     totalRevenueVnd: 0,
     paidOrdersCount: 0,
     profilesCount: 0,
     newProfilesLast30Days: 0,
+    activeSubscribers: 0,
+    expiredSubscribers: 0,
+    neverSubscribed: 0,
+    baziReadingUnlocked: 0,
+    tieuVanReadingActive: 0,
+    revenueByBucketVnd: { subscription: 0, addon: 0, legacy: 0 },
+    ordersBySku: {},
     revenueMomPct: "—",
     ordersMomPct: "—",
     newUsersMomPct: "—",
@@ -64,7 +53,21 @@ export default function AdminDashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeNav, setActiveNav] = useState("overview");
+  const [searchParams] = useSearchParams();
+  const navParam = searchParams.get("nav");
+  const [activeNav, setActiveNav] = useState(navParam ?? "overview");
+
+  useEffect(() => {
+    if (navParam === "users") {
+      navigate("/users", { replace: true });
+      return;
+    }
+    if (navParam === "payments") {
+      navigate("/orders", { replace: true });
+      return;
+    }
+    if (navParam) setActiveNav(navParam);
+  }, [navParam, navigate]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -82,17 +85,6 @@ export default function AdminDashboard() {
       (activeNav === "overview" || activeNav === "reports"),
   });
 
-  const profilesQuery = useQuery({
-    queryKey: adminKeys.profiles(),
-    queryFn: () => fetchAdminTableRows<AdminProfileRow>("profiles"),
-    enabled: !!user && hasEnv && activeNav === "users",
-  });
-
-  const paymentsQuery = useQuery({
-    queryKey: adminKeys.paymentOrders(),
-    queryFn: () => fetchAdminTableRows<AdminPaymentRow>("payment_orders"),
-    enabled: !!user && hasEnv && activeNav === "payments",
-  });
 
   const ledgerQuery = useQuery({
     queryKey: adminKeys.creditLedger(),
@@ -127,12 +119,6 @@ export default function AdminDashboard() {
       case "reports":
         void queryClient.refetchQueries({ queryKey: adminKeys.dashboardStats() });
         break;
-      case "users":
-        void queryClient.refetchQueries({ queryKey: adminKeys.profiles() });
-        break;
-      case "payments":
-        void queryClient.refetchQueries({ queryKey: adminKeys.paymentOrders() });
-        break;
       case "ledger":
         void queryClient.refetchQueries({ queryKey: adminKeys.creditLedger() });
         break;
@@ -151,14 +137,6 @@ export default function AdminDashboard() {
     }
   }, [activeNav, hasEnv, queryClient]);
 
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-admin-canvas text-sm text-admin-text-secondary">
-        Đang tải…
-      </div>
-    );
-  }
-
   const display = dashboardStatsQuery.data ?? emptyStats;
   const chartMonthly = display.monthly.length ? display.monthly : emptyStats.monthly;
   const statsLoading = dashboardStatsQuery.isLoading;
@@ -167,11 +145,7 @@ export default function AdminDashboard() {
   const isRefreshing =
     activeNav === "overview" || activeNav === "reports"
       ? dashboardStatsQuery.isFetching
-      : activeNav === "users"
-        ? profilesQuery.isFetching
-        : activeNav === "payments"
-          ? paymentsQuery.isFetching
-          : activeNav === "ledger"
+      : activeNav === "ledger"
             ? ledgerQuery.isFetching
             : activeNav === "feature-costs"
               ? featureCostsQuery.isFetching
@@ -184,11 +158,7 @@ export default function AdminDashboard() {
                     : false;
 
   const tabLoading =
-    activeNav === "users"
-      ? profilesQuery.isLoading
-      : activeNav === "payments"
-        ? paymentsQuery.isLoading
-        : activeNav === "ledger"
+    activeNav === "ledger"
           ? ledgerQuery.isLoading
           : activeNav === "feature-costs"
             ? featureCostsQuery.isLoading
@@ -201,11 +171,7 @@ export default function AdminDashboard() {
                   : false;
 
   const tabError =
-    activeNav === "users"
-      ? (profilesQuery.error?.message ?? null)
-      : activeNav === "payments"
-        ? (paymentsQuery.error?.message ?? null)
-        : activeNav === "ledger"
+    activeNav === "ledger"
           ? (ledgerQuery.error?.message ?? null)
           : activeNav === "feature-costs"
             ? (featureCostsQuery.error?.message ?? null)
@@ -217,59 +183,29 @@ export default function AdminDashboard() {
                   ? (dashboardStatsQuery.error?.message ?? null)
                   : null;
 
+  const userName =
+    user?.user_metadata?.full_name ??
+    user?.email?.split("@")[0] ??
+    "Admin";
+
   return (
-    <div className="flex min-h-dvh bg-admin-canvas text-foreground">
-      <AdminSidebar
-        activeId={activeNav}
-        onNavigate={setActiveNav}
-        onSignOut={signOut}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto max-w-6xl space-y-6">
-            <AdminTopBar
-              userName={
-                user.user_metadata?.full_name ??
-                user.email?.split("@")[0] ??
-                "Admin"
-              }
-              onRefresh={hasEnv ? handleRefresh : undefined}
-              refreshing={hasEnv && isRefreshing}
-            />
-            <EnvBanner ok={hasEnv} />
+    <AdminShell
+      activeNav={activeNav}
+      userName={userName}
+      onRefresh={hasEnv ? handleRefresh : undefined}
+      refreshing={hasEnv && isRefreshing}
+    >
+      <EnvBanner />
 
-            {activeNav === "overview" && statsError ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-                <p className="font-medium">Lỗi dữ liệu</p>
-                <p className="mt-1">{statsError}</p>
-                {statsError.includes("FORBIDDEN") ||
-                statsError.toLowerCase().includes("not an admin") ? (
-                  <p className="mt-2 text-xs text-red-800/90 leading-relaxed">
-                    Trong Supabase → <strong>Edge Functions</strong> →{" "}
-                    <strong>Secrets</strong>, chỉnh{" "}
-                    <code className="rounded bg-red-100/80 px-1">ADMIN_EMAILS</code> để{" "}
-                    <strong>có đúng email bạn đang đăng nhập</strong> (có thể nhiều email,
-                    cách nhau bằng dấu cách, phẩy hoặc xuống dòng). Email hiện tại:{" "}
-                    <code className="rounded bg-red-100/80 px-1">{user.email ?? "—"}</code>
-                    . Lưu secret xong chỉ cần tải lại trang — không cần deploy lại function.
-                  </p>
-                ) : (
-                  <p className="mt-2 text-xs text-red-800/90">
-                    Kiểm tra Edge Function{" "}
-                    <code className="rounded bg-red-100/80 px-1">admin-dashboard-stats</code>{" "}
-                    và secret{" "}
-                    <code className="rounded bg-red-100/80 px-1">ADMIN_EMAILS</code> trên
-                    Supabase.
-                  </p>
-                )}
-              </div>
-            ) : null}
+      {activeNav === "overview" ? (
+        <AdminForbiddenHint error={statsError} email={user?.email ?? null} />
+      ) : null}
 
-            {activeNav === "overview" ? (
+      {activeNav === "overview" ? (
               <>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   <StatCard
-                    label="Tổng nạp (PayOS, đã paid)"
+                    label="Doanh thu PayOS (đã paid)"
                     value={
                       statsLoading
                         ? "…"
@@ -302,12 +238,49 @@ export default function AdminDashboard() {
                     icon={<UserPlus className="size-4" strokeWidth={1.75} />}
                   />
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <StatCard
+                    label="Gói lịch đang active"
+                    value={
+                      statsLoading
+                        ? "…"
+                        : String(display.totals.activeSubscribers)
+                    }
+                    footnote={`hết hạn: ${statsLoading ? "…" : display.totals.expiredSubscribers} · chưa mua: ${statsLoading ? "…" : display.totals.neverSubscribed}`}
+                    icon={<CalendarDays className="size-4" strokeWidth={1.75} />}
+                  />
+                  <StatCard
+                    label="Luận Bát tự (đã mở)"
+                    value={
+                      statsLoading
+                        ? "…"
+                        : String(display.totals.baziReadingUnlocked)
+                    }
+                    footnote="bazi_reading_unlocked_at"
+                    icon={<BookOpen className="size-4" strokeWidth={1.75} />}
+                  />
+                  <StatCard
+                    label="Tiểu vận đang active"
+                    value={
+                      statsLoading
+                        ? "…"
+                        : String(display.totals.tieuVanReadingActive)
+                    }
+                    footnote="tieu_van_reading_expires_at > now"
+                    icon={<BookOpen className="size-4" strokeWidth={1.75} />}
+                  />
+                </div>
                 <RevenueTrendCard
                   monthly={chartMonthly}
                   chartScaleMaxM={display.chartScaleMaxM}
                   totalRevenueVnd={display.totals.totalRevenueVnd}
                   loading={statsLoading}
                   error={null}
+                />
+                <OrdersBySkuCard
+                  ordersBySku={display.totals.ordersBySku}
+                  revenueByBucketVnd={display.totals.revenueByBucketVnd}
+                  loading={statsLoading}
                 />
                 <p className="text-xs text-admin-text-secondary">
                   Người dùng đăng ký tổng:{" "}
@@ -326,15 +299,9 @@ export default function AdminDashboard() {
                 activeNav={activeNav}
                 tabLoading={tabLoading}
                 tabError={tabError}
-                userEmail={user.email ?? null}
-                profiles={
-                  activeNav === "users" ? (profilesQuery.data ?? null) : null
-                }
-                payments={
-                  activeNav === "payments"
-                    ? (paymentsQuery.data ?? null)
-                    : null
-                }
+                userEmail={user?.email ?? null}
+                profiles={null}
+                payments={null}
                 ledger={
                   activeNav === "ledger" ? (ledgerQuery.data ?? null) : null
                 }
@@ -369,11 +336,8 @@ export default function AdminDashboard() {
                     queryKey: adminKeys.siteBanner(),
                   });
                 }}
-                currentUserId={user.id}
+                currentUserId={user?.id ?? ""}
                 onUsersMutated={() => {
-                  void queryClient.invalidateQueries({
-                    queryKey: adminKeys.profiles(),
-                  });
                   void queryClient.invalidateQueries({
                     queryKey: adminKeys.creditLedger(),
                   });
@@ -383,9 +347,6 @@ export default function AdminDashboard() {
                 }}
               />
             )}
-          </div>
-        </main>
-      </div>
-    </div>
+    </AdminShell>
   );
 }

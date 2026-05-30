@@ -2,13 +2,24 @@ import { FunctionsHttpError } from "@supabase/supabase-js";
 
 import { supabase } from "~/lib/supabase";
 
+export type RevenueBucketVnd = {
+  subscription: number;
+  addon: number;
+  legacy: number;
+};
+
 export type AdminMonthlyDatum = {
   key: string;
   label: string;
-  leRevenueVnd: number;
   subscriptionRevenueVnd: number;
-  leM: number;
+  addonRevenueVnd: number;
+  legacyRevenueVnd: number;
   subscriptionM: number;
+  addonM: number;
+  legacyM: number;
+  /** @deprecated alias of legacyRevenueVnd */
+  leRevenueVnd?: number;
+  leM?: number;
 };
 
 export type AdminDashboardPayload = {
@@ -17,6 +28,13 @@ export type AdminDashboardPayload = {
     paidOrdersCount: number;
     profilesCount: number;
     newProfilesLast30Days: number;
+    activeSubscribers: number;
+    expiredSubscribers: number;
+    neverSubscribed: number;
+    baziReadingUnlocked: number;
+    tieuVanReadingActive: number;
+    revenueByBucketVnd: RevenueBucketVnd;
+    ordersBySku: Record<string, number>;
     revenueMomPct: string;
     ordersMomPct: string;
     newUsersMomPct: string;
@@ -29,6 +47,26 @@ type ErrorBody = { error?: { code?: string; message?: string } };
 
 export function formatVnd(amount: number) {
   return new Intl.NumberFormat("vi-VN").format(Math.round(amount)) + " ₫";
+}
+
+/** Map v1 API (2 buckets) → Direction C shape when deployed EF lags. */
+function normalizeMonthly(
+  monthly: AdminMonthlyDatum[],
+): AdminMonthlyDatum[] {
+  return monthly.map((row) => {
+    const legacyVnd = row.legacyRevenueVnd ?? row.leRevenueVnd ?? 0;
+    const subVnd = row.subscriptionRevenueVnd ?? 0;
+    const addonVnd = row.addonRevenueVnd ?? 0;
+    return {
+      ...row,
+      subscriptionRevenueVnd: subVnd,
+      addonRevenueVnd: addonVnd,
+      legacyRevenueVnd: legacyVnd,
+      subscriptionM: row.subscriptionM ?? subVnd / 1_000_000,
+      addonM: row.addonM ?? addonVnd / 1_000_000,
+      legacyM: row.legacyM ?? row.leM ?? legacyVnd / 1_000_000,
+    };
+  });
 }
 
 async function describeFunctionsError(err: unknown): Promise<string> {
@@ -93,5 +131,25 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardPayload>
     throw new Error("Phản hồi không hợp lệ");
   }
 
-  return data as AdminDashboardPayload;
+  const payload = data as AdminDashboardPayload;
+  const totals = payload.totals;
+
+  return {
+    ...payload,
+    monthly: normalizeMonthly(payload.monthly ?? []),
+    totals: {
+      ...totals,
+      activeSubscribers: totals.activeSubscribers ?? 0,
+      expiredSubscribers: totals.expiredSubscribers ?? 0,
+      neverSubscribed: totals.neverSubscribed ?? 0,
+      baziReadingUnlocked: totals.baziReadingUnlocked ?? 0,
+      tieuVanReadingActive: totals.tieuVanReadingActive ?? 0,
+      revenueByBucketVnd: totals.revenueByBucketVnd ?? {
+        subscription: 0,
+        addon: 0,
+        legacy: 0,
+      },
+      ordersBySku: totals.ordersBySku ?? {},
+    },
+  };
 }

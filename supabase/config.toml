@@ -1,26 +1,11 @@
 # Liên kết cùng Supabase project với app user:
-#   supabase login
-#   supabase link --project-ref <YOUR_PROJECT_REF>
+#   supabase link --project-ref hptovpbiwvtngorhdhhm
 #
-# Triển khai function dashboard:
-#   supabase secrets set ADMIN_EMAILS=admin@example.com
-#   supabase functions deploy admin-dashboard-stats
-#   supabase functions deploy admin-data
-#   supabase functions deploy admin-config
-#   supabase functions deploy admin-user-actions
-#   supabase functions deploy admin-site-banner
-# RPC admin_grant_credits (nạp lượng atomic):
-#   File: supabase/migrations/20260328120000_admin_grant_credits.sql
-#   — Nếu project đã có chuỗi migration từ repo *app user*, KHÔNG chạy
-#     `supabase db push` từ repo admin (CLI báo "Remote migration versions not found…").
-#   — Cách an toàn: Supabase Dashboard → SQL Editor → dán và chạy toàn bộ file SQL
-#     trên (CREATE OR REPLACE … idempotent).
-#   — Hoặc copy file migration đó vào repo đang làm `db push` thật sự rồi push từ đó.
+# Chỉ deploy các function SAO CHÉP / RIÊNG admin repo từ đây — xem supabase/functions/README.md
+#
+# P0 CS + dashboard + banner: deploy từ repo Ngay-lanh-thang-tot (canonical, CORS allowlist).
 
 project_id = "link-with-supabase-cli"
-
-[functions.admin-dashboard-stats]
-verify_jwt = false
 
 [functions.admin-data]
 verify_jwt = false
@@ -29,7 +14,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-user-actions]
-verify_jwt = false
-
-[functions.admin-site-banner]
 verify_jwt = false

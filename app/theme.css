@@ -64,6 +64,7 @@
   --admin-text-secondary: oklch(0.45 0.02 85);
   --admin-chart-new: oklch(0.88 0.006 85);
   --admin-chart-existing: oklch(0.18 0.02 85);
+  --admin-chart-addon: oklch(0.55 0.14 155);
   --admin-positive: oklch(0.55 0.14 155);
 }
 
@@ -116,6 +117,7 @@
   --color-admin-text-secondary: var(--admin-text-secondary);
   --color-admin-chart-new: var(--admin-chart-new);
   --color-admin-chart-existing: var(--admin-chart-existing);
+  --color-admin-chart-addon: var(--admin-chart-addon);
   --color-admin-positive: var(--admin-positive);
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import {
   AdminForbiddenHint,
@@ -9,6 +9,7 @@ import {
 } from "~/components/admin/AdminShell";
 import { UserEntitlementsForm } from "~/components/admin/UserEntitlementsForm";
 import { fetchReferralLinks } from "~/lib/admin-referrals";
+import { adminDeleteUser } from "~/lib/admin-user-actions";
 import { fetchAdminUserDetail } from "~/lib/admin-users";
 import { formatVnd } from "~/lib/admin-stats";
 import { useAuth } from "~/lib/auth";
@@ -28,9 +29,12 @@ function formatDt(iso: string | null) {
 
 export default function UserDetailRoute() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [includeLaSo, setIncludeLaSo] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const detailQuery = useQuery({
     queryKey: adminKeys.userDetail(id ?? "", includeLaSo),
@@ -50,6 +54,26 @@ export default function UserDetailRoute() {
     "Admin";
 
   const data = detailQuery.data;
+  const isSelf = Boolean(user?.id && data?.profile.id === user.id);
+
+  async function handleDeleteUser() {
+    if (!data) return;
+    setDeleteError(null);
+    const ok = window.confirm(
+      `Xoá vĩnh viễn tài khoản Auth và dữ liệu gắn với:\n${data.profile.email ?? data.profile.id}\n\nKhông hoàn tác.`,
+    );
+    if (!ok) return;
+    setDeleteBusy(true);
+    try {
+      await adminDeleteUser(data.profile.id);
+      void queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      navigate("/users", { replace: true });
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   return (
     <AdminShell
@@ -239,6 +263,33 @@ export default function UserDetailRoute() {
                   </table>
                 </div>
               )}
+            </section>
+
+            <section className="rounded-2xl border border-red-200/80 bg-red-50/40 p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-red-950">Vùng nguy hiểm</h2>
+              <p className="text-xs text-red-900/90">
+                Xoá user khỏi Supabase Auth qua{" "}
+                <code className="rounded bg-red-100/80 px-1 text-[11px]">
+                  admin-user-actions
+                </code>
+                . Không xoá được tài khoản đang đăng nhập.
+              </p>
+              {deleteError ? (
+                <p className="text-sm text-red-700">{deleteError}</p>
+              ) : null}
+              <button
+                type="button"
+                disabled={deleteBusy || isSelf}
+                title={
+                  isSelf
+                    ? "Không thể xoá chính tài khoản admin đang đăng nhập"
+                    : undefined
+                }
+                onClick={() => void handleDeleteUser()}
+                className="h-10 rounded-lg border border-red-300 bg-red-100/80 px-4 text-sm font-medium text-red-950 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteBusy ? "Đang xoá…" : "Xoá tài khoản"}
+              </button>
             </section>
 
             <section className="space-y-2">

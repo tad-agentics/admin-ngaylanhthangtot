@@ -7,9 +7,6 @@
 
 project_id = "link-with-supabase-cli"
 
-[functions.admin-data]
-verify_jwt = false
-
 [functions.admin-config]
 verify_jwt = false
 

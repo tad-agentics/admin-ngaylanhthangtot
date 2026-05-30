@@ -3,7 +3,7 @@
 Deploy **only** these functions from this repo:
 
 ```bash
-supabase functions deploy admin-data admin-config admin-user-actions --project-ref hptovpbiwvtngorhdhhm
+supabase functions deploy admin-config admin-user-actions --project-ref hptovpbiwvtngorhdhhm
 ```
 
 All other admin + app functions live in **`Ngay-lanh-thang-tot`** and must be deployed from there (CORS allowlist, Direction C stats, P0 CS APIs):

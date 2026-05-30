@@ -15,4 +15,7 @@ export const adminKeys = {
   referralLeaders: () => [...adminKeys.all, "referrals", "leaders"] as const,
   referralLinks: (filters: Record<string, string>) =>
     [...adminKeys.all, "referrals", "links", filters] as const,
+  couponsAll: () => [...adminKeys.all, "coupons"] as const,
+  couponsList: (filters: Record<string, string>) =>
+    [...adminKeys.couponsAll(), "list", filters] as const,
 };

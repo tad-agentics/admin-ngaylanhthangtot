@@ -5,6 +5,7 @@ import {
   CreditCard,
   Gift,
   LayoutDashboard,
+  Ticket,
   LayoutPanelTop,
   Settings,
   Shield,
@@ -29,6 +30,7 @@ const mainMenu: NavItem[] = [
   { id: "users", label: "Người dùng", icon: Users, to: "/users" },
   { id: "payments", label: "Giao dịch & PayOS", icon: CreditCard, to: "/orders" },
   { id: "referrals", label: "Giới thiệu", icon: Gift, to: "/referrals" },
+  { id: "coupons", label: "Mã giảm giá", icon: Ticket, to: "/coupons" },
   { id: "reports", label: "Báo cáo", icon: BarChart3, to: "/?nav=reports" },
 ];
 
@@ -71,7 +73,8 @@ function NavSection({
             activeId === id ||
             (id === "users" && location.pathname.startsWith("/users")) ||
             (id === "payments" && location.pathname === "/orders") ||
-            (id === "referrals" && location.pathname === "/referrals");
+            (id === "referrals" && location.pathname === "/referrals") ||
+            (id === "coupons" && location.pathname === "/coupons");
 
           const className = cn(
             "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors no-underline",

@@ -10,7 +10,7 @@ All other admin + app functions live in **`Ngay-lanh-thang-tot`** and must be de
 
 ```bash
 cd ../Ngay-lanh-thang-tot
-supabase functions deploy admin-dashboard-stats admin-site-banner admin-users admin-user-entitlements admin-orders admin-referrals
+supabase functions deploy admin-dashboard-stats admin-site-banner admin-users admin-user-entitlements admin-orders admin-referrals admin-coupons
 # …plus app functions as needed
 ```
 

@@ -96,6 +96,9 @@ export default function UsersSearchRoute() {
                     Email
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
+                    Đăng ký
+                  </th>
+                  <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
                     Gói lịch
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
@@ -118,6 +121,9 @@ export default function UsersSearchRoute() {
                       <p className="font-mono text-[11px] text-admin-text-secondary">
                         {u.id}
                       </p>
+                    </td>
+                    <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 text-xs whitespace-nowrap">
+                      {formatDt(u.created_at)}
                     </td>
                     <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 text-xs whitespace-nowrap">
                       {formatDt(u.subscription_expires_at)}

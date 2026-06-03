@@ -115,6 +115,10 @@ export default function UserDetailRoute() {
               ) : null}
               <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                 <div>
+                  <dt className="text-admin-text-secondary">Đăng ký</dt>
+                  <dd>{formatDt(data.profile.created_at)}</dd>
+                </div>
+                <div>
                   <dt className="text-admin-text-secondary">Gói lịch đến</dt>
                   <dd>{formatDt(data.profile.subscription_expires_at)}</dd>
                 </div>

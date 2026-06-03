@@ -87,14 +87,7 @@ export default function DangNhapRoute() {
           <NgayLanhLogoLockupCompact markSize={40} />
         </Link>
 
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold text-foreground">Đăng nhập admin</h1>
-          <p className="text-sm text-admin-text-secondary">
-            Tài khoản phải nằm trong secret{" "}
-            <code className="rounded bg-admin-canvas px-1 text-[11px]">ADMIN_EMAILS</code>{" "}
-            trên Edge Functions.
-          </p>
-        </div>
+        <h1 className="text-xl font-semibold text-foreground">Đăng nhập admin</h1>
 
         <div
           className="flex rounded-lg border border-admin-border-subtle bg-admin-card p-1"

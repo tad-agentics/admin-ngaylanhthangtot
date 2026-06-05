@@ -1,18 +1,25 @@
 /**
  * Admin dashboard aggregates — service_role + ADMIN_EMAILS.
  * Uses admin_dashboard_stats_snapshot() RPC (single DB round-trip).
- * In-memory cache (60s) per edge isolate — dashboard stats are not real-time.
+ * Shared Redis cache (60s) + in-memory fallback per isolate — stats are not real-time.
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminJson, requireAdmin } from "../_shared/admin-auth.ts";
 import { corsHeadersForRequest } from "../_shared/cors.ts";
+import {
+  redisGetString,
+  redisRestConfigured,
+  redisSetExString,
+} from "../_shared/redis-cache.ts";
 
 const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_SEC = 60;
+const REDIS_STATS_KEY = "admin:dashboard-stats:v1";
 
 type CachedBody = Record<string, unknown>;
 let statsCache: { at: number; body: CachedBody } | null = null;
 
-function readCache(): CachedBody | null {
+function readMemoryCache(): CachedBody | null {
   if (!statsCache) return null;
   if (Date.now() - statsCache.at >= CACHE_TTL_MS) {
     statsCache = null;
@@ -21,8 +28,41 @@ function readCache(): CachedBody | null {
   return statsCache.body;
 }
 
-function writeCache(body: CachedBody): void {
+function writeMemoryCache(body: CachedBody): void {
   statsCache = { at: Date.now(), body };
+}
+
+function isValidCachedBody(body: unknown): body is CachedBody {
+  if (!body || typeof body !== "object") return false;
+  const totals = (body as CachedBody).totals;
+  return totals != null && typeof totals === "object";
+}
+
+async function readSharedCache(): Promise<CachedBody | null> {
+  const mem = readMemoryCache();
+  if (mem && isValidCachedBody(mem)) return mem;
+  if (mem) statsCache = null;
+
+  try {
+    const raw = await redisGetString(REDIS_STATS_KEY);
+    if (!raw) return null;
+    const body = JSON.parse(raw) as unknown;
+    if (!isValidCachedBody(body)) return null;
+    writeMemoryCache(body);
+    return body;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSharedCache(body: CachedBody): Promise<void> {
+  writeMemoryCache(body);
+  if (!redisRestConfigured()) return;
+  try {
+    await redisSetExString(REDIS_STATS_KEY, JSON.stringify(body), CACHE_TTL_SEC);
+  } catch (e) {
+    console.error("admin-dashboard-stats redis write", e);
+  }
 }
 
 function pctChange(current: number, previous: number): number | null {
@@ -120,7 +160,7 @@ Deno.serve(async (req) => {
   if (auth instanceof Response) return auth;
   const { admin, cors: authCors } = auth;
 
-  const cached = readCache();
+  const cached = await readSharedCache();
   if (cached) {
     return adminJson(authCors, cached, 200, {
       "Cache-Control": "private, max-age=60",
@@ -139,7 +179,7 @@ Deno.serve(async (req) => {
     }
 
     const body = buildPayload(snap as Record<string, unknown>);
-    writeCache(body);
+    await writeSharedCache(body);
     return adminJson(authCors, body, 200, {
       "Cache-Control": "private, max-age=60",
     });

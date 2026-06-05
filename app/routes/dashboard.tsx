@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useIsFetching,
   useQuery,
   useQueryClient,
@@ -86,6 +87,8 @@ export default function AdminDashboard() {
       !!accessToken &&
       hasEnv &&
       (activeNav === "overview" || activeNav === "reports"),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 
   const appConfigQuery = useQuery({
@@ -123,7 +126,17 @@ export default function AdminDashboard() {
 
   const display = dashboardStatsQuery.data ?? emptyStats;
   const chartMonthly = display.monthly.length ? display.monthly : emptyStats.monthly;
-  const statsLoading = dashboardStatsQuery.isLoading;
+  const overviewActive = activeNav === "overview";
+  const reportsActive = activeNav === "reports";
+  const statsAwaitingData = !dashboardStatsQuery.data;
+  const statsLoading =
+    overviewActive &&
+    statsAwaitingData &&
+    (dashboardStatsQuery.isFetching || authLoading);
+  const reportsTabLoading =
+    reportsActive &&
+    statsAwaitingData &&
+    (dashboardStatsQuery.isFetching || authLoading);
   const statsError = dashboardStatsQuery.error?.message ?? null;
 
   const isRefreshing =
@@ -142,9 +155,7 @@ export default function AdminDashboard() {
       ? appConfigQuery.isLoading
       : activeNav === "site-banner"
         ? siteBannerQuery.isLoading
-        : activeNav === "reports"
-          ? dashboardStatsQuery.isLoading
-          : false;
+        : reportsTabLoading;
 
   const tabError =
     activeNav === "app-config"
@@ -178,29 +189,24 @@ export default function AdminDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard
               label="Doanh thu PayOS (đã paid)"
-              value={
-                statsLoading ? "…" : formatVnd(display.totals.totalRevenueVnd)
-              }
+              loading={statsLoading}
+              value={formatVnd(display.totals.totalRevenueVnd)}
               delta={display.totals.revenueMomPct}
               footnote="doanh thu tháng này vs tháng trước"
               icon={<Banknote className="size-4" strokeWidth={1.75} />}
             />
             <StatCard
               label="Đơn đã thanh toán"
-              value={
-                statsLoading ? "…" : String(display.totals.paidOrdersCount)
-              }
+              loading={statsLoading}
+              value={String(display.totals.paidOrdersCount)}
               delta={display.totals.ordersMomPct}
               footnote="số đơn paid — tháng này vs trước"
               icon={<ShoppingBag className="size-4" strokeWidth={1.75} />}
             />
             <StatCard
               label="Hồ sơ mới (30 ngày)"
-              value={
-                statsLoading
-                  ? "…"
-                  : String(display.totals.newProfilesLast30Days)
-              }
+              loading={statsLoading}
+              value={String(display.totals.newProfilesLast30Days)}
               delta={display.totals.newUsersMomPct}
               footnote="so với 30 ngày trước đó"
               icon={<UserPlus className="size-4" strokeWidth={1.75} />}
@@ -209,25 +215,22 @@ export default function AdminDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard
               label="Gói lịch đang active"
-              value={
-                statsLoading ? "…" : String(display.totals.activeSubscribers)
-              }
-              footnote={`hết hạn: ${statsLoading ? "…" : display.totals.expiredSubscribers} · chưa mua: ${statsLoading ? "…" : display.totals.neverSubscribed}`}
+              loading={statsLoading}
+              value={String(display.totals.activeSubscribers)}
+              footnote={`hết hạn: ${display.totals.expiredSubscribers} · chưa mua: ${display.totals.neverSubscribed}`}
               icon={<CalendarDays className="size-4" strokeWidth={1.75} />}
             />
             <StatCard
               label="Luận Bát tự (đã mở)"
-              value={
-                statsLoading ? "…" : String(display.totals.baziReadingUnlocked)
-              }
+              loading={statsLoading}
+              value={String(display.totals.baziReadingUnlocked)}
               footnote="bazi_reading_unlocked_at"
               icon={<BookOpen className="size-4" strokeWidth={1.75} />}
             />
             <StatCard
               label="Tiểu vận đang active"
-              value={
-                statsLoading ? "…" : String(display.totals.tieuVanReadingActive)
-              }
+              loading={statsLoading}
+              value={String(display.totals.tieuVanReadingActive)}
               footnote="tieu_van_reading_expires_at > now"
               icon={<BookOpen className="size-4" strokeWidth={1.75} />}
             />
@@ -247,7 +250,14 @@ export default function AdminDashboard() {
           <p className="text-xs text-admin-text-secondary">
             Người dùng đăng ký tổng:{" "}
             <strong className="font-medium text-foreground">
-              {statsLoading ? "…" : display.totals.profilesCount}
+              {statsLoading ? (
+                <span
+                  className="inline-block h-3.5 w-10 animate-pulse rounded bg-admin-canvas align-middle"
+                  aria-hidden
+                />
+              ) : (
+                display.totals.profilesCount
+              )}
             </strong>
             . Dữ liệu từ Edge Function{" "}
             <code className="rounded bg-admin-canvas px-1 text-[11px]">

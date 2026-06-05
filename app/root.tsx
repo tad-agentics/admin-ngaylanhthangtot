@@ -63,6 +63,7 @@ function AdminDashboardPrefetch() {
     void queryClient.prefetchQuery({
       queryKey: adminKeys.dashboardStats(),
       queryFn: () => fetchAdminDashboardStats(token),
+      staleTime: 60_000,
     });
   }, [token, user, queryClient]);
 

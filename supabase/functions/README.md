@@ -21,7 +21,7 @@ cd ../Ngay-lanh-thang-tot
 supabase functions deploy admin-site-banner admin-user-entitlements admin-orders admin-referrals admin-coupons
 ```
 
-`admin-dashboard-stats` deploy từ **admin repo** (có cache 60s in-memory). Không deploy lại từ app repo — sẽ ghi đè.
+`admin-dashboard-stats` deploy từ **admin repo** (cache 60s: Upstash Redis nếu có `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`, fallback in-memory). Không deploy lại từ app repo — sẽ ghi đè.
 
 Set secrets on the shared project: `ADMIN_EMAILS`, `ALLOWED_ORIGIN` (include admin app URL, e.g. `https://admin.ngaylanhthangtot.vn`).
 

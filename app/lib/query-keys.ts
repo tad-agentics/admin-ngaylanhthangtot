@@ -4,7 +4,8 @@ export const adminKeys = {
   dashboardStats: () => [...adminKeys.all, "dashboard-stats"] as const,
   appConfig: () => [...adminKeys.all, "app-config"] as const,
   siteBanner: () => [...adminKeys.all, "site-banner"] as const,
-  userSearch: (q: string) => [...adminKeys.all, "users", "search", q] as const,
+  userSearch: (params: Record<string, string | number>) =>
+    [...adminKeys.all, "users", "search", params] as const,
   userDetail: (id: string, includeLaSo = false) =>
     [...adminKeys.all, "users", "detail", id, includeLaSo ? "la_so" : ""] as const,
   ordersList: (filters: Record<string, string>) =>

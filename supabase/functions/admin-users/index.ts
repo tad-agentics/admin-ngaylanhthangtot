@@ -1,7 +1,8 @@
 /**
  * Admin user search + detail — JWT + ADMIN_EMAILS + service_role.
  *
- * GET ?q=&limit=20           → { users: [...] }
+ * GET ?q=&limit=20&offset=0&sort=created_at&order=desc
+ *   → { users, total, limit, offset }
  * GET ?id=<uuid>             → { profile, flags, paymentOrders, referralRewards, creditLedger }
  * POST { "id": "<uuid>" }    → same as GET ?id= (for supabase.functions.invoke)
  * POST { "q": "...", "limit"?: number } → search
@@ -72,6 +73,61 @@ function clampLimit(raw: string | null, fallback = DEFAULT_LIMIT): number {
   return Math.min(Math.max(1, n), MAX_LIMIT);
 }
 
+function clampOffset(raw: string | null): number {
+  if (!raw) return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, 50_000);
+}
+
+type SortField =
+  | "created_at"
+  | "bazi_luan"
+  | "tieu_van"
+  | "day_luan_follow_up";
+
+const SORT_COLUMNS: Record<SortField, string> = {
+  created_at: "created_at",
+  bazi_luan: "bazi_luan_click_count",
+  tieu_van: "tieu_van_luan_click_count",
+  day_luan_follow_up: "day_luan_follow_up_click_count",
+};
+
+function parseSort(raw: string | null | undefined): SortField {
+  const v = raw?.trim().toLowerCase();
+  if (v === "bazi_luan" || v === "bazi" || v === "bazi_luan_click_count") {
+    return "bazi_luan";
+  }
+  if (
+    v === "tieu_van" || v === "tieu_van_luan" ||
+    v === "tieu_van_luan_click_count"
+  ) {
+    return "tieu_van";
+  }
+  if (
+    v === "day_luan_follow_up" || v === "day_luan" ||
+    v === "day_luan_follow_up_click_count"
+  ) {
+    return "day_luan_follow_up";
+  }
+  return "created_at";
+}
+
+function parseAscending(raw: string | null | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  if (v === "asc") return true;
+  if (v === "desc") return false;
+  return false;
+}
+
+type SearchOpts = {
+  q: string;
+  limit: number;
+  offset: number;
+  sort: SortField;
+  ascending: boolean;
+};
+
 async function loadDayLuanAskCounts(
   admin: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2.49.1").createClient>,
   userIds: string[],
@@ -96,15 +152,22 @@ async function loadDayLuanAskCounts(
 
 async function searchUsers(
   admin: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2.49.1").createClient>,
-  q: string,
-  limit: number,
+  opts: SearchOpts,
 ) {
-  const trimmed = q.trim();
-  let query = admin
-    .from("profiles")
-    .select(PROFILE_LIST_COLS)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const trimmed = opts.q.trim();
+  const sortCol = SORT_COLUMNS[opts.sort];
+
+  let query = admin.from("profiles").select(PROFILE_LIST_COLS, {
+    count: "exact",
+  });
+
+  if (opts.sort === "created_at") {
+    query = query.order("created_at", { ascending: opts.ascending });
+  } else {
+    query = query
+      .order(sortCol, { ascending: opts.ascending })
+      .order("created_at", { ascending: false });
+  }
 
   if (trimmed) {
     if (isUuid(trimmed)) {
@@ -112,11 +175,18 @@ async function searchUsers(
     } else if (/^[a-z0-9_-]+$/iu.test(trimmed) && trimmed.length <= 32) {
       query = query.eq("referral_code", trimmed.toLowerCase());
     } else {
-      query = query.ilike("email", `%${trimmed.replaceAll("%", "")}%`);
+      const escaped = trimmed
+        .replaceAll("\\", "\\\\")
+        .replaceAll("%", "\\%")
+        .replaceAll("_", "\\_");
+      query = query.ilike("email", `%${escaped}%`);
     }
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query.range(
+    opts.offset,
+    opts.offset + opts.limit - 1,
+  );
   if (error) throw error;
 
   const rows = (data ?? []) as ProfileRow[];
@@ -134,7 +204,29 @@ async function searchUsers(
     day_luan_ai_ask_count: askCounts.get(row.id) ?? 0,
   }));
 
-  return { users };
+  return {
+    users,
+    total: count ?? users.length,
+    limit: opts.limit,
+    offset: opts.offset,
+  };
+}
+
+function searchOptsFromQuery(
+  q: string,
+  limitRaw: string | null,
+  offsetRaw: string | null,
+  sortRaw: string | null,
+  orderRaw: string | null,
+): SearchOpts {
+  const sort = parseSort(sortRaw);
+  return {
+    q,
+    limit: clampLimit(limitRaw),
+    offset: clampOffset(offsetRaw),
+    sort,
+    ascending: parseAscending(orderRaw),
+  };
 }
 
 async function userDetail(
@@ -253,8 +345,14 @@ Deno.serve(async (req) => {
       }
 
       const q = url.searchParams.get("q") ?? "";
-      const limit = clampLimit(url.searchParams.get("limit"));
-      return adminJson(cors, await searchUsers(admin, q, limit));
+      const opts = searchOptsFromQuery(
+        q,
+        url.searchParams.get("limit"),
+        url.searchParams.get("offset"),
+        url.searchParams.get("sort"),
+        url.searchParams.get("order"),
+      );
+      return adminJson(cors, await searchUsers(admin, opts));
     }
 
     if (req.method === "POST") {
@@ -262,6 +360,9 @@ Deno.serve(async (req) => {
         id?: string;
         q?: string;
         limit?: number;
+        offset?: number;
+        sort?: string;
+        order?: string;
         includeLaSo?: boolean;
       };
       try {
@@ -269,6 +370,9 @@ Deno.serve(async (req) => {
           id?: string;
           q?: string;
           limit?: number;
+          offset?: number;
+          sort?: string;
+          order?: string;
           includeLaSo?: boolean;
         };
       } catch {
@@ -302,13 +406,19 @@ Deno.serve(async (req) => {
         return adminJson(cors, detail);
       }
 
-      const limit = typeof body.limit === "number"
-        ? Math.min(Math.max(1, Math.floor(body.limit)), MAX_LIMIT)
-        : DEFAULT_LIMIT;
-      return adminJson(
-        cors,
-        await searchUsers(admin, body.q ?? "", limit),
-      );
+      const sort = parseSort(body.sort);
+      const opts: SearchOpts = {
+        q: body.q ?? "",
+        limit: typeof body.limit === "number"
+          ? Math.min(Math.max(1, Math.floor(body.limit)), MAX_LIMIT)
+          : DEFAULT_LIMIT,
+        offset: typeof body.offset === "number" && body.offset >= 0
+          ? Math.floor(body.offset)
+          : 0,
+        sort,
+        ascending: parseAscending(body.order),
+      };
+      return adminJson(cors, await searchUsers(admin, opts));
     }
 
     return adminJson(

@@ -32,8 +32,27 @@ export type AdminUserListItem = {
   day_luan_ai_ask_count: number;
 };
 
+export type UserEngagementSort =
+  | "created_at"
+  | "bazi_luan"
+  | "tieu_van"
+  | "day_luan_follow_up";
+
+export type UserSearchSortOrder = "asc" | "desc";
+
+export type AdminUserSearchParams = {
+  q?: string;
+  limit?: number;
+  offset?: number;
+  sort?: UserEngagementSort;
+  order?: UserSearchSortOrder;
+};
+
 export type AdminUserSearchResponse = {
   users: AdminUserListItem[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 export type AdminPaymentOrderSummary = {
@@ -80,14 +99,40 @@ export type AdminUserDetailResponse = {
 };
 
 export async function searchAdminUsers(
-  q: string,
-  limit = 20,
+  params: AdminUserSearchParams,
 ): Promise<AdminUserSearchResponse> {
-  const trimmed = q.trim();
-  return adminFunctionGet<AdminUserSearchResponse>("admin-users", {
-    q: trimmed,
-    limit,
-  });
+  const limit = params.limit ?? 20;
+  const offset = params.offset ?? 0;
+  const payload = await adminFunctionGet<AdminUserSearchResponse>(
+    "admin-users",
+    {
+      q: params.q?.trim() ?? "",
+      limit,
+      offset,
+      sort: params.sort ?? "created_at",
+      order: params.order ?? "desc",
+    },
+  );
+
+  if (!payload?.users || !Array.isArray(payload.users)) {
+    throw new Error("Phản hồi không hợp lệ");
+  }
+
+  return {
+    users: payload.users,
+    total:
+      typeof payload.total === "number" && Number.isFinite(payload.total)
+        ? payload.total
+        : payload.users.length,
+    limit:
+      typeof payload.limit === "number" && Number.isFinite(payload.limit)
+        ? payload.limit
+        : limit,
+    offset:
+      typeof payload.offset === "number" && Number.isFinite(payload.offset)
+        ? payload.offset
+        : offset,
+  };
 }
 
 export async function fetchAdminUserDetail(

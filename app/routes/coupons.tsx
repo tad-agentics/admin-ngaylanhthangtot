@@ -346,9 +346,10 @@ export default function CouponsRoute() {
           </button>
         </form>
 
-        {listQuery.error ? (
-          <AdminForbiddenHint message={listQuery.error.message} />
-        ) : null}
+        <AdminForbiddenHint
+          error={listQuery.error?.message ?? null}
+          email={user?.email ?? null}
+        />
 
         <div className="overflow-x-auto rounded-2xl border border-admin-border-subtle bg-admin-card">
           <table className="w-full min-w-[720px] border-collapse text-sm">

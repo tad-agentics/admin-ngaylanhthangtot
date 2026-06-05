@@ -111,6 +111,12 @@ def patch_day_luan(path: Path) -> None:
         "\n",
         content,
     )
+    content = re.sub(
+        r"\n  if \(action === \"cta_click\"\) \{[\s\S]*?\n  \}\n",
+        "\n",
+        content,
+        count=1,
+    )
     if "trackProfileEngagement" not in content:
         content = content.replace(
             'import { corsHeadersForRequest } from "../_shared/cors.ts";',
@@ -118,39 +124,27 @@ def patch_day_luan(path: Path) -> None:
             'import { trackProfileEngagement } from "../_shared/user-engagement.ts";',
         )
 
-    needle = """    if (!slot) {
-      return json(
-        {
-          ok: false,
-          error_code: "RATE_LIMITED",
-          message: "Đợi vài giây rồi thử lại.",
-        },
-        429,
-        req,
-      );
-    }
+    needle = """  const admin = createClient(supabaseUrl, serviceKey);
 
-    const history = storedMessages;"""
+  if (action === "open") {"""
 
-    replacement = """    if (!slot) {
-      return json(
-        {
-          ok: false,
-          error_code: "RATE_LIMITED",
-          message: "Đợi vài giây rồi thử lại.",
-        },
-        429,
-        req,
-      );
-    }
+    replacement = """  const admin = createClient(supabaseUrl, serviceKey);
 
+  if (action === "cta_click") {
     trackProfileEngagement(admin, user.id, "day_luan_follow_up");
+    return json({ ok: true }, 200, req);
+  }
 
-    const history = storedMessages;"""
+  if (action === "open") {"""
 
     if needle not in content:
-        raise RuntimeError(f"{path}: rate-limit anchor not found")
-    path.write_text(content.replace(needle, replacement, 1))
+        raise RuntimeError(f"{path}: cta_click anchor not found")
+    content = content.replace(needle, replacement, 1)
+    content = content.replace(
+        'message: \'action phải là "open" hoặc "ask".\'',
+        'message: \'action phải là "open", "ask" hoặc "cta_click".\'',
+    )
+    path.write_text(content)
 
 
 def main() -> None:

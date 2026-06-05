@@ -139,7 +139,7 @@ export default function UsersSearchRoute() {
           <h1 className="text-lg font-semibold text-foreground">Người dùng</h1>
           <p className="mt-1 text-sm text-admin-text-secondary">
             Tìm theo email, user id hoặc mã giới thiệu. Bấm tiêu đề cột Luận BT /
-            TV / Hỏi thêm để sắp xếp cao→thấp hoặc thấp→cao.
+            TV / Hỏi tiếp ngày để sắp xếp cao→thấp hoặc thấp→cao.
           </p>
         </div>
 
@@ -232,7 +232,7 @@ export default function UsersSearchRoute() {
                     onSort={toggleEngagementSort}
                   />
                   <SortableEngagementHeader
-                    label="Hỏi thêm ngày"
+                    label="Hỏi tiếp ngày"
                     sortKey="day_luan_follow_up"
                     activeSort={sort}
                     activeOrder={order}
@@ -292,7 +292,7 @@ export default function UsersSearchRoute() {
                     </td>
                     <td
                       className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
-                      title={`Tổng lifetime: gửi hỏi thêm luận ngày (thành công: ${u.day_luan_ai_ask_count ?? 0})`}
+                      title={`Tổng lifetime: bấm CTA "Hỏi tiếp về ngày này" (đã gửi câu hỏi: ${u.day_luan_ai_ask_count ?? 0})`}
                     >
                       {u.day_luan_follow_up_click_count ?? 0}
                     </td>
@@ -336,7 +336,7 @@ export default function UsersSearchRoute() {
                         ? "Luận BT"
                         : sort === "tieu_van"
                           ? "Luận TV"
-                          : "Hỏi thêm"}{" "}
+                          : "Hỏi tiếp ngày"}{" "}
                       {order === "desc" ? "cao→thấp" : "thấp→cao"}
                     </span>
                   ) : null}

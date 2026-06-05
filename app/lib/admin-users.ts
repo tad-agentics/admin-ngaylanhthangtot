@@ -22,6 +22,12 @@ export type AdminUserListItem = {
   referral_reward_total_vnd: number | null;
   created_at: string;
   flags: AdminUserFlags;
+  /** Tổng lifetime: mở luận la-so-chi-tiet (có quyền, không preview). */
+  bazi_luan_click_count: number;
+  /** Tổng lifetime: mở luận tiểu vận tháng (có quyền). */
+  tieu_van_luan_click_count: number;
+  /** Tổng lifetime: gửi hỏi thêm luận ngày (sau rate limit). */
+  day_luan_follow_up_click_count: number;
   /** Completed follow-up asks in luận giải ngày (day-luan-chat). */
   day_luan_ai_ask_count: number;
 };
@@ -56,6 +62,9 @@ export type AdminUserDetailResponse = {
     la_so?: unknown;
   };
   flags: AdminUserFlags;
+  bazi_luan_click_count: number;
+  tieu_van_luan_click_count: number;
+  day_luan_follow_up_click_count: number;
   day_luan_ai_ask_count: number;
   referrer: { id: string; email: string | null; referral_code: string | null } | null;
   paymentOrders: AdminPaymentOrderSummary[];

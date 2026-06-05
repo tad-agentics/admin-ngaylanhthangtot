@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""Patch downloaded Supabase edge function sources in-place (idempotent)."""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SHARED = ROOT / "supabase" / "functions" / "_shared"
+
+SHARED_FILES = [
+    "user-engagement.ts",
+    "auth-user.ts",
+    "tieu-van-reading-gate.ts",
+]
+
+
+def sync_shared(workdir: Path) -> None:
+    dest = workdir / "supabase" / "functions" / "_shared"
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in SHARED_FILES:
+        (dest / name).write_text((SHARED / name).read_text())
+
+
+def strip_engagement_patches(content: str) -> str:
+    content = content.replace(
+        'import { requireAuthenticatedUser } from "../../auth-user.ts";\n', "",
+    )
+    content = content.replace(
+        'import { trackProfileEngagement } from "../../user-engagement.ts";\n', "",
+    )
+    content = content.replace(
+        'import { userHasTieuVanReadingAccess } from "../../tieu-van-reading-gate.ts";\n',
+        "",
+    )
+    content = re.sub(
+        r"\n    if \(endpoint === \"tieu-van\"\) \{[\s\S]*?\n    \}\n",
+        "\n",
+        content,
+        count=1,
+    )
+    content = re.sub(
+        r"\n      if \(\n        endpoint === \"la-so-chi-tiet\" &&[\s\S]*?\n      \) \{\n"
+        r"        trackProfileEngagement\(auth\.admin, auth\.uid, \"bazi_luan\"\);\n"
+        r"      \}\n",
+        "\n",
+        content,
+    )
+    content = re.sub(
+        r"\n      trackProfileEngagement\(auth\.admin, auth\.uid, \"bazi_luan\"\);\n",
+        "\n",
+        content,
+    )
+    return content
+
+
+def patch_create_handler(path: Path, *, tieu_van: bool) -> None:
+    content = strip_engagement_patches(path.read_text())
+    content = content.replace(
+        'import { corsHeadersForRequest } from "../../cors.ts";',
+        'import { corsHeadersForRequest } from "../../cors.ts";\n'
+        'import { requireAuthenticatedUser } from "../../auth-user.ts";\n'
+        'import { trackProfileEngagement } from "../../user-engagement.ts";\n'
+        + (
+            'import { userHasTieuVanReadingAccess } from "../../tieu-van-reading-gate.ts";\n'
+            if tieu_van
+            else ""
+        ),
+    )
+
+    if tieu_van:
+        if "userHasTieuVanReadingAccess(tieuAuth.admin" not in content:
+            content = content.replace(
+                "    let rateLimitUserId: string | null = null;\n",
+                "    let rateLimitUserId: string | null = null;\n\n"
+                "    if (endpoint === \"tieu-van\") {\n"
+                "      const tieuAuth = await requireAuthenticatedUser(req);\n"
+                "      if (tieuAuth) {\n"
+                "        rateLimitUserId = tieuAuth.uid;\n"
+                "        if (await userHasTieuVanReadingAccess(tieuAuth.admin, tieuAuth.uid)) {\n"
+                "          trackProfileEngagement(tieuAuth.admin, tieuAuth.uid, \"tieu_van_luan\");\n"
+                "        }\n"
+                "      }\n"
+                "    }\n",
+            )
+    elif 'trackProfileEngagement(auth.admin, auth.uid, "bazi_luan")' not in content:
+        content = content.replace(
+            "      rateLimitUserId = auth.uid;\n    }\n\n    const promptBody:",
+            "      rateLimitUserId = auth.uid;\n"
+            "      if (\n"
+            "        endpoint === \"la-so-chi-tiet\" &&\n"
+            "        !preview &&\n"
+            "        !prewarmUserId\n"
+            "      ) {\n"
+            "        trackProfileEngagement(auth.admin, auth.uid, \"bazi_luan\");\n"
+            "      }\n"
+            "    }\n\n    const promptBody:",
+        )
+
+    path.write_text(content)
+
+
+def patch_day_luan(path: Path) -> None:
+    content = path.read_text()
+    content = content.replace(
+        'import { trackProfileEngagement } from "../_shared/user-engagement.ts";\n', "",
+    )
+    content = re.sub(
+        r"\n    trackProfileEngagement\(admin, user\.id, \"day_luan_follow_up\"\);\n",
+        "\n",
+        content,
+    )
+    if "trackProfileEngagement" not in content:
+        content = content.replace(
+            'import { corsHeadersForRequest } from "../_shared/cors.ts";',
+            'import { corsHeadersForRequest } from "../_shared/cors.ts";\n'
+            'import { trackProfileEngagement } from "../_shared/user-engagement.ts";',
+        )
+
+    needle = """    if (!slot) {
+      return json(
+        {
+          ok: false,
+          error_code: "RATE_LIMITED",
+          message: "Đợi vài giây rồi thử lại.",
+        },
+        429,
+        req,
+      );
+    }
+
+    const history = storedMessages;"""
+
+    replacement = """    if (!slot) {
+      return json(
+        {
+          ok: false,
+          error_code: "RATE_LIMITED",
+          message: "Đợi vài giây rồi thử lại.",
+        },
+        429,
+        req,
+      );
+    }
+
+    trackProfileEngagement(admin, user.id, "day_luan_follow_up");
+
+    const history = storedMessages;"""
+
+    if needle not in content:
+        raise RuntimeError(f"{path}: rate-limit anchor not found")
+    path.write_text(content.replace(needle, replacement, 1))
+
+
+def main() -> None:
+    workdir = Path(sys.argv[1])
+    kind = sys.argv[2]
+    sync_shared(workdir)
+    fn_root = workdir / "supabase" / "functions"
+
+    if kind == "day-luan-chat":
+        patch_day_luan(fn_root / "day-luan-chat" / "index.ts")
+    elif kind == "generate-reading-tieu-van":
+        patch_create_handler(
+            fn_root / "_shared" / "generate-reading" / "handler" / "create-handler.ts",
+            tieu_van=True,
+        )
+    elif kind in ("generate-reading-la-so", "generate-reading-luu-nien"):
+        patch_create_handler(
+            fn_root / "_shared" / "generate-reading" / "handler" / "create-handler.ts",
+            tieu_van=False,
+        )
+    else:
+        raise SystemExit(f"unknown kind: {kind}")
+
+
+if __name__ == "__main__":
+    main()

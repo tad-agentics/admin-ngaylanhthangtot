@@ -52,7 +52,8 @@ export default function UsersSearchRoute() {
         <div>
           <h1 className="text-lg font-semibold text-foreground">Người dùng</h1>
           <p className="mt-1 text-sm text-admin-text-secondary">
-            Tìm theo email, user id hoặc mã giới thiệu.
+            Tìm theo email, user id hoặc mã giới thiệu. Cột Luận BT / TV / Hỏi
+            thêm là tổng lifetime (không theo từng lần đăng nhập).
           </p>
         </div>
 
@@ -89,7 +90,7 @@ export default function UsersSearchRoute() {
 
         {query.data ? (
           <div className="overflow-x-auto rounded-2xl border border-admin-border-subtle bg-admin-card/80">
-            <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
+            <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
               <thead>
                 <tr>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
@@ -105,7 +106,13 @@ export default function UsersSearchRoute() {
                     Flags
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
-                    Hỏi AI (luận ngày)
+                    Luận BT
+                  </th>
+                  <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
+                    Luận TV
+                  </th>
+                  <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
+                    Hỏi thêm ngày
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
                     Mã GT
@@ -149,9 +156,21 @@ export default function UsersSearchRoute() {
                     </td>
                     <td
                       className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
-                      title="Số lần hỏi AI thành công trong mục luận giải ngày (day-luan-chat)"
+                      title="Tổng lifetime: mở luận la-so-chi-tiet (có quyền, không preview)"
                     >
-                      {u.day_luan_ai_ask_count ?? 0}
+                      {u.bazi_luan_click_count ?? 0}
+                    </td>
+                    <td
+                      className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
+                      title="Tổng lifetime: mở luận tiểu vận tháng (có quyền)"
+                    >
+                      {u.tieu_van_luan_click_count ?? 0}
+                    </td>
+                    <td
+                      className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
+                      title={`Tổng lifetime: gửi hỏi thêm luận ngày (thành công: ${u.day_luan_ai_ask_count ?? 0})`}
+                    >
+                      {u.day_luan_follow_up_click_count ?? 0}
                     </td>
                     <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 font-mono text-xs">
                       {u.referral_code ?? "—"}

@@ -167,11 +167,32 @@ export default function UserDetailRoute() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-admin-text-secondary">Hỏi AI (luận ngày)</dt>
+                  <dt className="text-admin-text-secondary">Luận Bát tự (lifetime)</dt>
                   <dd className="tabular-nums">
-                    {data.day_luan_ai_ask_count ?? 0}
+                    {data.bazi_luan_click_count ?? 0}
                     <span className="ml-1 text-xs text-admin-text-secondary">
                       lần
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Luận tiểu vận (lifetime)</dt>
+                  <dd className="tabular-nums">
+                    {data.tieu_van_luan_click_count ?? 0}
+                    <span className="ml-1 text-xs text-admin-text-secondary">
+                      lần
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Hỏi thêm ngày (lifetime)</dt>
+                  <dd className="tabular-nums">
+                    {data.day_luan_follow_up_click_count ?? 0}
+                    <span className="ml-1 text-xs text-admin-text-secondary">
+                      lần
+                    </span>
+                    <span className="mt-0.5 block text-xs text-admin-text-secondary">
+                      Thành công: {data.day_luan_ai_ask_count ?? 0} lần
                     </span>
                   </dd>
                 </div>

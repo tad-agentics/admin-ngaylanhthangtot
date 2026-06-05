@@ -1,17 +1,24 @@
 # Edge Functions — admin repo (partial deploy)
 
-Deploy **only** these functions from this repo:
+Deploy **from this repo**:
 
 ```bash
-supabase functions deploy admin-config admin-user-actions --project-ref hptovpbiwvtngorhdhhm
+supabase functions deploy admin-config admin-user-actions admin-users --project-ref hptovpbiwvtngorhdhhm
 ```
 
-All other admin + app functions live in **`Ngay-lanh-thang-tot`** and must be deployed from there (CORS allowlist, Direction C stats, P0 CS APIs):
+**Engagement tracking** (app functions — patch + deploy from downloaded sources):
+
+```bash
+./scripts/deploy-engagement-functions.sh
+```
+
+Patches live in `supabase/functions/_shared/{user-engagement,auth-user,tieu-van-reading-gate}.ts` and `scripts/patch-engagement-functions.py`. DB migration: `supabase/migrations/20260605120000_profile_engagement_click_counts.sql`.
+
+Other admin + app functions still live in **`Ngay-lanh-thang-tot`** — after changing shared app code there, re-run `./scripts/deploy-engagement-functions.sh` here so tracking patches are re-applied.
 
 ```bash
 cd ../Ngay-lanh-thang-tot
-supabase functions deploy admin-dashboard-stats admin-site-banner admin-users admin-user-entitlements admin-orders admin-referrals admin-coupons
-# …plus app functions as needed
+supabase functions deploy admin-dashboard-stats admin-site-banner admin-user-entitlements admin-orders admin-referrals admin-coupons
 ```
 
 Set secrets on the shared project: `ADMIN_EMAILS`, `ALLOWED_ORIGIN` (include admin app URL, e.g. `https://admin.ngaylanhthangtot.vn`).

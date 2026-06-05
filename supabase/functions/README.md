@@ -3,7 +3,7 @@
 Deploy **from this repo**:
 
 ```bash
-supabase functions deploy admin-config admin-user-actions admin-users --project-ref hptovpbiwvtngorhdhhm
+supabase functions deploy admin-config admin-user-actions admin-users admin-dashboard-stats --project-ref hptovpbiwvtngorhdhhm
 ```
 
 **Engagement tracking** (app functions — patch + deploy from downloaded sources):
@@ -18,8 +18,10 @@ Other admin + app functions still live in **`Ngay-lanh-thang-tot`** — after ch
 
 ```bash
 cd ../Ngay-lanh-thang-tot
-supabase functions deploy admin-dashboard-stats admin-site-banner admin-user-entitlements admin-orders admin-referrals admin-coupons
+supabase functions deploy admin-site-banner admin-user-entitlements admin-orders admin-referrals admin-coupons
 ```
+
+`admin-dashboard-stats` deploy từ **admin repo** (có cache 60s in-memory). Không deploy lại từ app repo — sẽ ghi đè.
 
 Set secrets on the shared project: `ADMIN_EMAILS`, `ALLOWED_ORIGIN` (include admin app URL, e.g. `https://admin.ngaylanhthangtot.vn`).
 

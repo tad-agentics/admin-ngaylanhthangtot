@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.admin-user-actions]
 verify_jwt = false
+
+[functions.admin-dashboard-stats]
+verify_jwt = false

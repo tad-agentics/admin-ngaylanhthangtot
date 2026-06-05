@@ -65,9 +65,13 @@ function normalizeMonthly(
   });
 }
 
-export async function fetchAdminDashboardStats(): Promise<AdminDashboardPayload> {
+export async function fetchAdminDashboardStats(
+  accessToken?: string,
+): Promise<AdminDashboardPayload> {
   const payload = await adminFunctionGet<AdminDashboardPayload>(
     "admin-dashboard-stats",
+    undefined,
+    accessToken,
   );
 
   if (!payload || typeof payload !== "object" || !("totals" in payload)) {

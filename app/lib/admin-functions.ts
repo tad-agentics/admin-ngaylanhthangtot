@@ -55,7 +55,8 @@ export async function describeAdminFunctionError(
   return String(err);
 }
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(accessToken?: string): Promise<string> {
+  if (accessToken) return accessToken;
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
   const token = data.session?.access_token;
@@ -66,6 +67,7 @@ async function getAccessToken(): Promise<string> {
 export async function adminFunctionGet<T>(
   functionName: string,
   query?: Record<string, string | number | undefined>,
+  accessToken?: string,
 ): Promise<T> {
   const base = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -82,7 +84,7 @@ export async function adminFunctionGet<T>(
 
   const qs = params.toString();
   const url = `${base}/functions/v1/${functionName}${qs ? `?${qs}` : ""}`;
-  const token = await getAccessToken();
+  const token = await getAccessToken(accessToken);
 
   const res = await fetch(url, {
     method: "GET",

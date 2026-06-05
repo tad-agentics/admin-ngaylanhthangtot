@@ -22,10 +22,15 @@ export function adminJson(
   cors: Record<string, string>,
   body: unknown,
   status = 200,
+  extraHeaders?: Record<string, string>,
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: {
+      ...cors,
+      "Content-Type": "application/json",
+      ...extraHeaders,
+    },
   });
 }
 

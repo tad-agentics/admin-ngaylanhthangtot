@@ -30,24 +30,27 @@ export function AdminShell({
     }
   }, [authLoading, user, navigate]);
 
-  if (authLoading || !user) {
+  if (!authLoading && !user) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-admin-canvas text-sm text-admin-text-secondary">
-        Đang tải…
+        Đang chuyển hướng…
       </div>
     );
   }
 
   return (
     <div className="flex min-h-dvh bg-admin-canvas text-foreground">
-      <AdminSidebar activeId={activeNav} onSignOut={signOut} />
+      <AdminSidebar
+        activeId={activeNav}
+        onSignOut={authLoading ? async () => {} : signOut}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto max-w-6xl space-y-6">
             <AdminTopBar
-              userName={userName}
-              onRefresh={onRefresh}
-              refreshing={refreshing}
+              userName={authLoading ? "…" : userName}
+              onRefresh={authLoading ? undefined : onRefresh}
+              refreshing={authLoading || refreshing}
             />
             {children}
           </div>

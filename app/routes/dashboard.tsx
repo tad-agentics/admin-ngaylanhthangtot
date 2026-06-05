@@ -48,7 +48,8 @@ const REMOVED_LEGACY_NAV = new Set(["ledger", "feature-costs"]);
 export default function AdminDashboard() {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const hasEnv = Boolean(url && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-  const { user, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
+  const accessToken = session?.access_token;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -80,9 +81,9 @@ export default function AdminDashboard() {
 
   const dashboardStatsQuery = useQuery({
     queryKey: adminKeys.dashboardStats(),
-    queryFn: fetchAdminDashboardStats,
+    queryFn: () => fetchAdminDashboardStats(accessToken),
     enabled:
-      !!user &&
+      !!accessToken &&
       hasEnv &&
       (activeNav === "overview" || activeNav === "reports"),
   });

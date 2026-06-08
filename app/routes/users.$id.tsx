@@ -66,7 +66,7 @@ export default function UserDetailRoute() {
     setDeleteBusy(true);
     try {
       await adminDeleteUser(data.profile.id);
-      void queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      void queryClient.invalidateQueries({ queryKey: [...adminKeys.all, "users"] });
       navigate("/users", { replace: true });
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : String(e));

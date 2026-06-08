@@ -89,11 +89,20 @@ export function AdminForbiddenHint({
     error.includes("FORBIDDEN") ||
     error.toLowerCase().includes("not an admin") ||
     error.includes("403");
+  const rateLimited =
+    error.includes("429") ||
+    error.toLowerCase().includes("too many admin");
 
   return (
     <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
       <p className="font-medium">Lỗi dữ liệu</p>
       <p className="mt-1">{error}</p>
+      {rateLimited ? (
+        <p className="mt-2 text-xs text-red-800/90 leading-relaxed">
+          Giới hạn ~180 request/phút mỗi admin. Đợi khoảng 1 phút rồi tải lại; tránh
+          bấm Làm mới liên tục trên nhiều tab.
+        </p>
+      ) : null}
       {forbidden ? (
         <p className="mt-2 text-xs text-red-800/90 leading-relaxed">
           Thêm email{" "}

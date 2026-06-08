@@ -60,6 +60,13 @@ function AdminDashboardPrefetch() {
 
   useEffect(() => {
     if (!token || !user) return;
+    const state = queryClient.getQueryState(adminKeys.dashboardStats());
+    if (
+      state?.dataUpdatedAt &&
+      Date.now() - state.dataUpdatedAt < 60_000
+    ) {
+      return;
+    }
     void queryClient.prefetchQuery({
       queryKey: adminKeys.dashboardStats(),
       queryFn: () => fetchAdminDashboardStats(token),
@@ -79,6 +86,16 @@ export default function App() {
             staleTime: 60 * 60 * 1000,
             gcTime: 2 * 60 * 60 * 1000,
             refetchOnWindowFocus: false,
+            retry: (failureCount, error) => {
+              const msg = error instanceof Error ? error.message : String(error);
+              if (
+                msg.includes("429") ||
+                msg.toLowerCase().includes("too many admin")
+              ) {
+                return false;
+              }
+              return failureCount < 2;
+            },
           },
         },
       }),

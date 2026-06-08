@@ -130,7 +130,6 @@ export default function AdminDashboard() {
         void queryClient.refetchQueries({ queryKey: adminKeys.siteBanner() });
         break;
       default:
-        void queryClient.refetchQueries({ queryKey: adminKeys.all });
         break;
     }
   }, [activeNav, hasEnv, queryClient]);

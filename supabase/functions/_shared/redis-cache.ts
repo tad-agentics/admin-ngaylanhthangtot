@@ -49,3 +49,58 @@ export async function redisSetExString(
     console.error("redisSetExString", res.status, await res.text());
   }
 }
+
+/** SET key value EX ttl NX — true when slot acquired. */
+export async function redisSetNxEx(
+  key: string,
+  value: string,
+  ttlSec: number,
+): Promise<boolean> {
+  if (!redisRestConfigured()) return true;
+  const res = await fetch(restBase(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${bearer()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(["SET", key, value, "EX", ttlSec, "NX"]),
+  });
+  if (!res.ok) {
+    console.error("redisSetNxEx", res.status, await res.text());
+    return false;
+  }
+  const j = (await res.json()) as { result?: string | null; error?: string };
+  if (j.error) {
+    console.error("redisSetNxEx", j.error);
+    return false;
+  }
+  return j.result === "OK";
+}
+
+/** INCR + EXPIRE on first hit — sliding window counter. */
+export async function redisIncrWindow(
+  key: string,
+  windowSec: number,
+): Promise<number | null> {
+  if (!redisRestConfigured()) return null;
+  const res = await fetch(`${restBase()}/incr/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${bearer()}` },
+  });
+  if (!res.ok) {
+    console.error("redisIncrWindow incr", res.status, await res.text());
+    return null;
+  }
+  const j = (await res.json()) as { result?: number | null; error?: string };
+  if (j.error || typeof j.result !== "number") return null;
+  if (j.result === 1) {
+    const exp = await fetch(`${restBase()}/expire/${encodeURIComponent(key)}/${windowSec}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${bearer()}` },
+    });
+    if (!exp.ok) {
+      console.error("redisIncrWindow expire", exp.status, await exp.text());
+    }
+  }
+  return j.result;
+}

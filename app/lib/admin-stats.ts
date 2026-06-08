@@ -1,5 +1,8 @@
 import { adminFunctionGet } from "~/lib/admin-functions";
 
+/** Align with admin-dashboard-stats Redis + Cache-Control TTL (3 min). */
+export const DASHBOARD_STATS_STALE_MS = 180_000;
+
 export type RevenueBucketVnd = {
   subscription: number;
   addon: number;

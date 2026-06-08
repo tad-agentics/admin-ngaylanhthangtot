@@ -1,7 +1,7 @@
 /**
  * Admin dashboard aggregates — service_role + ADMIN_EMAILS.
  * Uses admin_dashboard_stats_snapshot() RPC (single DB round-trip).
- * Shared Redis cache (60s) + in-memory fallback per isolate — stats are not real-time.
+ * Shared Redis cache (3 min) + in-memory fallback per isolate — stats are not real-time.
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminJson, requireAdmin } from "../_shared/admin-auth.ts";
@@ -12,9 +12,9 @@ import {
   redisSetExString,
 } from "../_shared/redis-cache.ts";
 
-const CACHE_TTL_MS = 60_000;
-const CACHE_TTL_SEC = 60;
-const REDIS_STATS_KEY = "admin:dashboard-stats:v1";
+const CACHE_TTL_MS = 180_000;
+const CACHE_TTL_SEC = 180;
+const REDIS_STATS_KEY = "admin:dashboard-stats:v2";
 
 type CachedBody = Record<string, unknown>;
 let statsCache: { at: number; body: CachedBody } | null = null;
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
   const cached = await readSharedCache();
   if (cached) {
     return adminJson(authCors, cached, 200, {
-      "Cache-Control": "private, max-age=60",
+      "Cache-Control": "private, max-age=180",
     });
   }
 
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     const body = buildPayload(snap as Record<string, unknown>);
     await writeSharedCache(body);
     return adminJson(authCors, body, 200, {
-      "Cache-Control": "private, max-age=60",
+      "Cache-Control": "private, max-age=180",
     });
   } catch (e) {
     console.error("admin-dashboard-stats", e);

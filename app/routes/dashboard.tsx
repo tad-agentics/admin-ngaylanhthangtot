@@ -25,6 +25,7 @@ import { fetchAppConfigRows } from "~/lib/admin-config";
 import { fetchAdminSiteBanner } from "~/lib/admin-site-banner";
 import {
   type AdminDashboardPayload,
+  DASHBOARD_STATS_STALE_MS,
   fetchAdminDashboardStats,
   formatVnd,
 } from "~/lib/admin-stats";
@@ -98,7 +99,7 @@ export default function AdminDashboard() {
       !!accessToken &&
       hasEnv &&
       (activeNav === "overview" || activeNav === "reports"),
-    staleTime: 60_000,
+    staleTime: DASHBOARD_STATS_STALE_MS,
     placeholderData: keepPreviousData,
   });
 
@@ -287,7 +288,7 @@ export default function AdminDashboard() {
                 display.totals.profilesCount
               )}
             </strong>
-            . Dữ liệu từ Edge Function{" "}
+            . Snapshot cache ~3 phút qua{" "}
             <code className="rounded bg-admin-canvas px-1 text-[11px]">
               admin-dashboard-stats
             </code>

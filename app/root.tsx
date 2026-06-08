@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
   Links,
@@ -9,9 +9,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import { AuthProvider, useAuth } from "~/lib/auth";
-import { fetchAdminDashboardStats } from "~/lib/admin-stats";
-import { adminKeys } from "~/lib/query-keys";
+import { AuthProvider } from "~/lib/auth";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -53,30 +51,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function AdminDashboardPrefetch() {
-  const { session, user } = useAuth();
-  const queryClient = useQueryClient();
-  const token = session?.access_token;
-
-  useEffect(() => {
-    if (!token || !user) return;
-    const state = queryClient.getQueryState(adminKeys.dashboardStats());
-    if (
-      state?.dataUpdatedAt &&
-      Date.now() - state.dataUpdatedAt < 60_000
-    ) {
-      return;
-    }
-    void queryClient.prefetchQuery({
-      queryKey: adminKeys.dashboardStats(),
-      queryFn: () => fetchAdminDashboardStats(token),
-      staleTime: 60_000,
-    });
-  }, [token, user, queryClient]);
-
-  return null;
-}
-
 export default function App() {
   const [queryClient] = useState(
     () =>
@@ -104,7 +78,6 @@ export default function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <AdminDashboardPrefetch />
         <Outlet />
       </QueryClientProvider>
     </AuthProvider>

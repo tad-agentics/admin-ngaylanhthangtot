@@ -41,7 +41,6 @@ const emptyStats: AdminDashboardPayload = {
     expiredSubscribers: 0,
     neverSubscribed: 0,
     baziReadingUnlocked: 0,
-    tieuVanReadingActive: 0,
     onboardingTrialActive: 0,
     onboardingTrialExhausted: 0,
     traCuuThreadsLast30d: 0,
@@ -219,7 +218,7 @@ export default function AdminDashboard() {
               icon={<UserPlus className="size-4" strokeWidth={1.75} />}
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <StatCard
               label="Gói lịch đang active"
               loading={statsLoading}
@@ -232,13 +231,6 @@ export default function AdminDashboard() {
               loading={statsLoading}
               value={String(display.totals.baziReadingUnlocked)}
               footnote="bazi_reading_unlocked_at"
-              icon={<BookOpen className="size-4" strokeWidth={1.75} />}
-            />
-            <StatCard
-              label="Tiểu vận đang active"
-              loading={statsLoading}
-              value={String(display.totals.tieuVanReadingActive)}
-              footnote="tieu_van_reading_expires_at > now"
               icon={<BookOpen className="size-4" strokeWidth={1.75} />}
             />
           </div>

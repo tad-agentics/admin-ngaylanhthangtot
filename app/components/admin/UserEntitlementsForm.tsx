@@ -27,9 +27,6 @@ export function UserEntitlementsForm({
   const [baziUnlock, setBaziUnlock] = useState(
     profile.bazi_reading_unlocked_at != null,
   );
-  const [tieuVanAt, setTieuVanAt] = useState(
-    toDatetimeLocalValue(profile.tieu_van_reading_expires_at),
-  );
   const [adminNote, setAdminNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +41,6 @@ export function UserEntitlementsForm({
       return;
     }
     const nextSub = fromDatetimeLocalValue(subscriptionAt);
-    const nextTv = fromDatetimeLocalValue(tieuVanAt);
     const hadBazi = profile.bazi_reading_unlocked_at != null;
 
     const body: Parameters<typeof patchAdminUserEntitlements>[0] = {
@@ -58,14 +54,10 @@ export function UserEntitlementsForm({
     if (baziUnlock !== hadBazi) {
       body.baziReadingUnlock = baziUnlock;
     }
-    if (!isoTimesEqual(nextTv, profile.tieu_van_reading_expires_at)) {
-      body.tieuVanExpiresAt = nextTv;
-    }
 
     if (
       !("subscriptionExpiresAt" in body) &&
-      !("baziReadingUnlock" in body) &&
-      !("tieuVanExpiresAt" in body)
+      !("baziReadingUnlock" in body)
     ) {
       setError("Không có thay đổi so với hiện tại.");
       return;
@@ -92,43 +84,26 @@ export function UserEntitlementsForm({
       <h2 className="text-sm font-semibold text-foreground">Sửa entitlement</h2>
       <p className="text-xs text-admin-text-secondary">
         Không sửa ngày sinh / lá số từ đây. Mọi thay đổi được ghi audit phía server
-        (gói lịch, luận Bát tự, Tiểu vận).
+        (gói lịch, luận Bát tự).
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label
-            htmlFor="sub-expires"
-            className="block text-xs font-medium text-foreground"
-          >
-            Gói lịch đến
-          </label>
-          <input
-            id="sub-expires"
-            type="datetime-local"
-            value={subscriptionAt}
-            onChange={(e) => setSubscriptionAt(e.target.value)}
-            className="mt-1 h-10 w-full rounded-lg border border-admin-border-subtle bg-background px-3 text-sm"
-          />
-          <p className="mt-1 text-[11px] text-admin-text-secondary">
-            Để trống = xoá hạn gói lịch
-          </p>
-        </div>
-        <div>
-          <label
-            htmlFor="tv-expires"
-            className="block text-xs font-medium text-foreground"
-          >
-            Tiểu vận đến
-          </label>
-          <input
-            id="tv-expires"
-            type="datetime-local"
-            value={tieuVanAt}
-            onChange={(e) => setTieuVanAt(e.target.value)}
-            className="mt-1 h-10 w-full rounded-lg border border-admin-border-subtle bg-background px-3 text-sm"
-          />
-        </div>
+      <div>
+        <label
+          htmlFor="sub-expires"
+          className="block text-xs font-medium text-foreground"
+        >
+          Gói lịch đến
+        </label>
+        <input
+          id="sub-expires"
+          type="datetime-local"
+          value={subscriptionAt}
+          onChange={(e) => setSubscriptionAt(e.target.value)}
+          className="mt-1 h-10 w-full max-w-md rounded-lg border border-admin-border-subtle bg-background px-3 text-sm"
+        />
+        <p className="mt-1 text-[11px] text-admin-text-secondary">
+          Để trống = xoá hạn gói lịch
+        </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm">

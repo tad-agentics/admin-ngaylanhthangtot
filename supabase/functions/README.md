@@ -12,7 +12,7 @@ supabase functions deploy admin-config admin-user-actions admin-users admin-dash
 ./scripts/deploy-engagement-functions.sh
 ```
 
-Patches live in `supabase/functions/_shared/{user-engagement,auth-user,tieu-van-reading-gate}.ts` and `scripts/patch-engagement-functions.py`. DB migration: `supabase/migrations/20260605120000_profile_engagement_click_counts.sql`.
+Patches live in `supabase/functions/_shared/{user-engagement,auth-user}.ts` and `scripts/patch-engagement-functions.py`. DB migration: `supabase/migrations/20260605120000_profile_engagement_click_counts.sql`.
 
 Other admin + app functions still live in **`Ngay-lanh-thang-tot`** — after changing shared app code there, re-run `./scripts/deploy-engagement-functions.sh` here so tracking patches are re-applied.
 

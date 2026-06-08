@@ -6,7 +6,6 @@ import {
 export type AdminUserFlags = {
   subscriptionActive: boolean;
   canUseBaziReading: boolean;
-  canUseTieuVanReading: boolean;
   isNeverSubscribed: boolean;
   hasOnboardingTrialAccess: boolean;
   trialExhausted: boolean;
@@ -49,7 +48,6 @@ export type AdminUserListItem = {
   display_name: string | null;
   subscription_expires_at: string | null;
   bazi_reading_unlocked_at: string | null;
-  tieu_van_reading_expires_at: string | null;
   referral_code: string | null;
   referred_by: string | null;
   referral_reward_total_vnd: number | null;
@@ -57,8 +55,6 @@ export type AdminUserListItem = {
   flags: AdminUserFlags;
   /** Tổng lifetime: mở luận la-so-chi-tiet (có quyền, không preview). */
   bazi_luan_click_count: number;
-  /** Tổng lifetime: mở luận tiểu vận tháng (có quyền). */
-  tieu_van_luan_click_count: number;
   /** Tổng lifetime: bấm CTA "Hỏi tiếp về ngày này". */
   day_luan_follow_up_click_count: number;
   /** Completed follow-up asks in luận ngày (day-luan-chat). */
@@ -69,7 +65,6 @@ export type AdminUserListItem = {
 export type UserEngagementSort =
   | "created_at"
   | "bazi_luan"
-  | "tieu_van"
   | "day_luan_follow_up";
 
 export type UserSearchSortOrder = "asc" | "desc";
@@ -118,7 +113,6 @@ export type AdminUserDetailResponse = {
   flags: AdminUserFlags;
   quota: AdminUserQuotaSnapshot;
   bazi_luan_click_count: number;
-  tieu_van_luan_click_count: number;
   day_luan_follow_up_click_count: number;
   day_luan_ai_ask_count: number;
   tra_cuu_ai_ask_count: number;
@@ -141,7 +135,6 @@ function normalizeFlags(raw: Partial<AdminUserFlags> | undefined): AdminUserFlag
   return {
     subscriptionActive: raw?.subscriptionActive ?? false,
     canUseBaziReading: raw?.canUseBaziReading ?? false,
-    canUseTieuVanReading: raw?.canUseTieuVanReading ?? false,
     isNeverSubscribed: raw?.isNeverSubscribed ?? false,
     hasOnboardingTrialAccess: raw?.hasOnboardingTrialAccess ?? false,
     trialExhausted: raw?.trialExhausted ?? false,
@@ -250,7 +243,6 @@ export type PatchEntitlementsBody = {
   userId: string;
   subscriptionExpiresAt?: string | null;
   baziReadingUnlock?: boolean;
-  tieuVanExpiresAt?: string | null;
   adminNote: string;
 };
 
@@ -261,7 +253,6 @@ export type PatchEntitlementsResponse = {
     email: string | null;
     subscription_expires_at: string | null;
     bazi_reading_unlocked_at: string | null;
-    tieu_van_reading_expires_at: string | null;
   };
   auditedBy: string;
 };

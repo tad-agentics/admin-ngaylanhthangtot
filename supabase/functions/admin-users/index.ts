@@ -14,7 +14,6 @@ import { adminJson, isUuid, requireAdmin } from "../_shared/admin-auth.ts";
 import {
   canAccessPaidCalendar,
   canUseBaziReading,
-  canUseTieuVanReading,
   effectiveChatQuotaRemaining,
   hasOnboardingTrialAccess,
   isNeverSubscribedUser,
@@ -31,7 +30,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
 const PROFILE_LIST_COLS =
-  "id, email, display_name, subscription_expires_at, bazi_reading_unlocked_at, tieu_van_reading_expires_at, referral_code, referred_by, referral_reward_total_vnd, credits_balance, onboarding_trial_questions_used, la_so_recompute_status, birth_edit_count, birth_edit_window_start, onboarding_completed_at, ngay_sinh, gio_sinh, gioi_tinh, created_at, updated_at, bazi_luan_click_count, tieu_van_luan_click_count, day_luan_follow_up_click_count";
+  "id, email, display_name, subscription_expires_at, bazi_reading_unlocked_at, referral_code, referred_by, referral_reward_total_vnd, credits_balance, onboarding_trial_questions_used, la_so_recompute_status, birth_edit_count, birth_edit_window_start, onboarding_completed_at, ngay_sinh, gio_sinh, gioi_tinh, created_at, updated_at, bazi_luan_click_count, day_luan_follow_up_click_count";
 
 function detailColumns(includeLaSo: boolean): string {
   return includeLaSo ? `${PROFILE_LIST_COLS}, la_so` : PROFILE_LIST_COLS;
@@ -61,7 +60,6 @@ type ProfileRow = ProfileEntitlements & {
   created_at: string;
   updated_at: string;
   bazi_luan_click_count: number | null;
-  tieu_van_luan_click_count: number | null;
   day_luan_follow_up_click_count: number | null;
   onboarding_trial_questions_used: number | null;
   la_so?: unknown;
@@ -73,7 +71,6 @@ function computeFlags(profile: ProfileTrialEntitlements, trialMax: number) {
   return {
     subscriptionActive: subscriptionActive(profile.subscription_expires_at),
     canUseBaziReading: canUseBaziReading(profile),
-    canUseTieuVanReading: canUseTieuVanReading(profile),
     isNeverSubscribed: neverSub,
     hasOnboardingTrialAccess: hasOnboardingTrialAccess(profile, trialMax),
     trialExhausted: neverSub && trialRemaining === 0,
@@ -120,16 +117,11 @@ function clampOffset(raw: string | null): number {
   return Math.min(n, 50_000);
 }
 
-type SortField =
-  | "created_at"
-  | "bazi_luan"
-  | "tieu_van"
-  | "day_luan_follow_up";
+type SortField = "created_at" | "bazi_luan" | "day_luan_follow_up";
 
 const SORT_COLUMNS: Record<SortField, string> = {
   created_at: "created_at",
   bazi_luan: "bazi_luan_click_count",
-  tieu_van: "tieu_van_luan_click_count",
   day_luan_follow_up: "day_luan_follow_up_click_count",
 };
 
@@ -137,12 +129,6 @@ function parseSort(raw: string | null | undefined): SortField {
   const v = raw?.trim().toLowerCase();
   if (v === "bazi_luan" || v === "bazi" || v === "bazi_luan_click_count") {
     return "bazi_luan";
-  }
-  if (
-    v === "tieu_van" || v === "tieu_van_luan" ||
-    v === "tieu_van_luan_click_count"
-  ) {
-    return "tieu_van";
   }
   if (
     v === "day_luan_follow_up" || v === "day_luan" ||
@@ -269,7 +255,6 @@ async function searchUsers(
     ...row,
     flags: computeFlags(row, trialMax),
     bazi_luan_click_count: row.bazi_luan_click_count ?? 0,
-    tieu_van_luan_click_count: row.tieu_van_luan_click_count ?? 0,
     day_luan_follow_up_click_count: row.day_luan_follow_up_click_count ?? 0,
     day_luan_ai_ask_count: askCounts.get(row.id) ?? 0,
   }));
@@ -404,7 +389,6 @@ async function userDetail(
     quota: buildQuotaSnapshot(row, trialMax, dailyCountToday),
     referrer: referredByProfile ?? null,
     bazi_luan_click_count: row.bazi_luan_click_count ?? 0,
-    tieu_van_luan_click_count: row.tieu_van_luan_click_count ?? 0,
     day_luan_follow_up_click_count: row.day_luan_follow_up_click_count ?? 0,
     day_luan_ai_ask_count: askCounts.get(userId) ?? 0,
     tra_cuu_ai_ask_count: traCuuAskCount,

@@ -61,7 +61,6 @@ export const CHECKOUT_PACKAGE_SKUS = [
   "goi_6thang",
   "goi_12thang",
   "luan_bat_tu",
-  "luan_tieu_van",
 ] as const;
 
 const PACKAGE_LABELS: Record<string, string> = {
@@ -69,7 +68,6 @@ const PACKAGE_LABELS: Record<string, string> = {
   goi_6thang: "Gói 6 tháng",
   goi_12thang: "Gói 12 tháng",
   luan_bat_tu: "Luận Bát tự",
-  luan_tieu_van: "Luận Tiểu vận",
 };
 
 export function packageSkuLabel(sku: string) {

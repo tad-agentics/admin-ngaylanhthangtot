@@ -161,10 +161,6 @@ export default function UserDetailRoute() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-admin-text-secondary">Tiểu vận đến</dt>
-                  <dd>{formatDt(data.profile.tieu_van_reading_expires_at)}</dd>
-                </div>
-                <div>
                   <dt className="text-admin-text-secondary">Mã giới thiệu</dt>
                   <dd className="font-mono text-xs">
                     {data.profile.referral_code ?? "—"}
@@ -200,15 +196,6 @@ export default function UserDetailRoute() {
                   <dt className="text-admin-text-secondary">Luận Bát tự (lifetime)</dt>
                   <dd className="tabular-nums">
                     {data.bazi_luan_click_count ?? 0}
-                    <span className="ml-1 text-xs text-admin-text-secondary">
-                      lần
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-admin-text-secondary">Luận tiểu vận (lifetime)</dt>
-                  <dd className="tabular-nums">
-                    {data.tieu_van_luan_click_count ?? 0}
                     <span className="ml-1 text-xs text-admin-text-secondary">
                       lần
                     </span>

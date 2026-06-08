@@ -1,9 +1,6 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-export type EngagementMetric =
-  | "bazi_luan"
-  | "tieu_van_luan"
-  | "day_luan_follow_up";
+export type EngagementMetric = "bazi_luan" | "day_luan_follow_up";
 
 /** Fire-and-forget engagement counter — service_role RPC only. */
 export function trackProfileEngagement(

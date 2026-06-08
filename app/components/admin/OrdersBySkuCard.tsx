@@ -8,7 +8,6 @@ const SKU_LABELS: Record<string, string> = {
   goi_6thang: "Gói 6 tháng",
   goi_12thang: "Gói 12 tháng",
   luan_bat_tu: "Luận Bát tự",
-  luan_tieu_van: "Luận Tiểu vận",
   le: "SKU lẻ (le)",
 };
 

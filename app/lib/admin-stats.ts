@@ -30,7 +30,6 @@ export type AdminDashboardPayload = {
     expiredSubscribers: number;
     neverSubscribed: number;
     baziReadingUnlocked: number;
-    tieuVanReadingActive: number;
     onboardingTrialActive: number;
     onboardingTrialExhausted: number;
     traCuuThreadsLast30d: number;
@@ -92,7 +91,6 @@ export async function fetchAdminDashboardStats(
       expiredSubscribers: totals.expiredSubscribers ?? 0,
       neverSubscribed: totals.neverSubscribed ?? 0,
       baziReadingUnlocked: totals.baziReadingUnlocked ?? 0,
-      tieuVanReadingActive: totals.tieuVanReadingActive ?? 0,
       onboardingTrialActive: totals.onboardingTrialActive ?? 0,
       onboardingTrialExhausted: totals.onboardingTrialExhausted ?? 0,
       traCuuThreadsLast30d: totals.traCuuThreadsLast30d ?? 0,

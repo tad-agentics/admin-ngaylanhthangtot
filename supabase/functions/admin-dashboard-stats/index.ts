@@ -118,7 +118,6 @@ function buildPayload(snap: Record<string, unknown>): CachedBody {
       expiredSubscribers: num(snap.expiredSubscribers),
       neverSubscribed: num(snap.neverSubscribed),
       baziReadingUnlocked: num(snap.baziReadingUnlocked),
-      tieuVanReadingActive: num(snap.tieuVanReadingActive),
       onboardingTrialActive: num(snap.onboardingTrialActive),
       onboardingTrialExhausted: num(snap.onboardingTrialExhausted),
       traCuuThreadsLast30d: num(snap.traCuuThreadsLast30d),

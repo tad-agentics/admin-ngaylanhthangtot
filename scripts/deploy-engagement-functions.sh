@@ -9,7 +9,6 @@ WORK="$ROOT/.deploy/edge-work"
 FUNCTIONS=(
   day-luan-chat
   generate-reading-la-so
-  generate-reading-tieu-van
   generate-reading-luu-nien
 )
 

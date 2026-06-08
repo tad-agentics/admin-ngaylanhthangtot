@@ -139,7 +139,7 @@ export default function UsersSearchRoute() {
           <h1 className="text-lg font-semibold text-foreground">Người dùng</h1>
           <p className="mt-1 text-sm text-admin-text-secondary">
             Tìm theo email, user id hoặc mã giới thiệu. Bấm tiêu đề cột Luận BT /
-            TV / Hỏi tiếp ngày để sắp xếp cao→thấp hoặc thấp→cao.
+            Hỏi tiếp ngày để sắp xếp cao→thấp hoặc thấp→cao.
           </p>
         </div>
 
@@ -225,13 +225,6 @@ export default function UsersSearchRoute() {
                     onSort={toggleEngagementSort}
                   />
                   <SortableEngagementHeader
-                    label="Luận TV"
-                    sortKey="tieu_van"
-                    activeSort={sort}
-                    activeOrder={order}
-                    onSort={toggleEngagementSort}
-                  />
-                  <SortableEngagementHeader
                     label="Hỏi tiếp ngày"
                     sortKey="day_luan_follow_up"
                     activeSort={sort}
@@ -271,11 +264,6 @@ export default function UsersSearchRoute() {
                             BT
                           </span>
                         ) : null}
-                        {u.flags.canUseTieuVanReading ? (
-                          <span className="rounded bg-admin-canvas px-1.5 py-0.5 text-[10px] font-medium">
-                            TV
-                          </span>
-                        ) : null}
                         {u.flags.hasOnboardingTrialAccess ? (
                           <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-900">
                             Trial
@@ -293,12 +281,6 @@ export default function UsersSearchRoute() {
                       title="Tổng lifetime: mở luận la-so-chi-tiet (có quyền, không preview)"
                     >
                       {u.bazi_luan_click_count ?? 0}
-                    </td>
-                    <td
-                      className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
-                      title="Tổng lifetime: mở luận tiểu vận tháng (có quyền)"
-                    >
-                      {u.tieu_van_luan_click_count ?? 0}
                     </td>
                     <td
                       className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
@@ -342,11 +324,7 @@ export default function UsersSearchRoute() {
                   {sort !== "created_at" ? (
                     <span className="ml-2 text-xs">
                       · sắp xếp{" "}
-                      {sort === "bazi_luan"
-                        ? "Luận BT"
-                        : sort === "tieu_van"
-                          ? "Luận TV"
-                          : "Hỏi tiếp ngày"}{" "}
+                      {sort === "bazi_luan" ? "Luận BT" : "Hỏi tiếp ngày"}{" "}
                       {order === "desc" ? "cao→thấp" : "thấp→cao"}
                     </span>
                   ) : null}

@@ -3,26 +3,35 @@
  *
  * GET ?q=&limit=20&offset=0&sort=created_at&order=desc
  *   → { users, total, limit, offset }
- * GET ?id=<uuid>             → { profile, flags, paymentOrders, referralRewards, creditLedger }
+ * GET ?id=<uuid>             → { profile, flags, quota, paymentOrders, referralRewards, chat debug }
  * POST { "id": "<uuid>" }    → same as GET ?id= (for supabase.functions.invoke)
  * POST { "q": "...", "limit"?: number } → search
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { readOnboardingTrialQuestionsMax } from "../_shared/app-config-read.ts";
 import { corsHeadersForRequest } from "../_shared/cors.ts";
 import { adminJson, isUuid, requireAdmin } from "../_shared/admin-auth.ts";
 import {
+  canAccessPaidCalendar,
   canUseBaziReading,
   canUseTieuVanReading,
+  effectiveChatQuotaRemaining,
+  hasOnboardingTrialAccess,
   isNeverSubscribedUser,
+  MAX_DAILY_CHAT_TURNS,
+  onboardingTrialQuestionsRemaining,
+  onboardingTrialQuestionsUsed,
   subscriptionActive,
   type ProfileEntitlements,
+  type ProfileTrialEntitlements,
 } from "../_shared/entitlements.ts";
+import { todayIsoVietnam } from "../_shared/vn-dates.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
 const PROFILE_LIST_COLS =
-  "id, email, display_name, subscription_expires_at, bazi_reading_unlocked_at, tieu_van_reading_expires_at, referral_code, referred_by, referral_reward_total_vnd, credits_balance, la_so_recompute_status, birth_edit_count, birth_edit_window_start, onboarding_completed_at, ngay_sinh, gio_sinh, gioi_tinh, created_at, updated_at, bazi_luan_click_count, tieu_van_luan_click_count, day_luan_follow_up_click_count";
+  "id, email, display_name, subscription_expires_at, bazi_reading_unlocked_at, tieu_van_reading_expires_at, referral_code, referred_by, referral_reward_total_vnd, credits_balance, onboarding_trial_questions_used, la_so_recompute_status, birth_edit_count, birth_edit_window_start, onboarding_completed_at, ngay_sinh, gio_sinh, gioi_tinh, created_at, updated_at, bazi_luan_click_count, tieu_van_luan_click_count, day_luan_follow_up_click_count";
 
 function detailColumns(includeLaSo: boolean): string {
   return includeLaSo ? `${PROFILE_LIST_COLS}, la_so` : PROFILE_LIST_COLS;
@@ -54,15 +63,46 @@ type ProfileRow = ProfileEntitlements & {
   bazi_luan_click_count: number | null;
   tieu_van_luan_click_count: number | null;
   day_luan_follow_up_click_count: number | null;
+  onboarding_trial_questions_used: number | null;
   la_so?: unknown;
 };
 
-function computeFlags(profile: ProfileEntitlements) {
+function computeFlags(profile: ProfileTrialEntitlements, trialMax: number) {
+  const neverSub = isNeverSubscribedUser(profile);
+  const trialRemaining = onboardingTrialQuestionsRemaining(profile, trialMax);
   return {
     subscriptionActive: subscriptionActive(profile.subscription_expires_at),
     canUseBaziReading: canUseBaziReading(profile),
     canUseTieuVanReading: canUseTieuVanReading(profile),
-    isNeverSubscribed: isNeverSubscribedUser(profile),
+    isNeverSubscribed: neverSub,
+    hasOnboardingTrialAccess: hasOnboardingTrialAccess(profile, trialMax),
+    trialExhausted: neverSub && trialRemaining === 0,
+    canAccessPaidCalendar: canAccessPaidCalendar(profile, trialMax),
+  };
+}
+
+function buildQuotaSnapshot(
+  profile: ProfileTrialEntitlements,
+  trialMax: number,
+  dailyCountToday: number,
+) {
+  const trialUsed = onboardingTrialQuestionsUsed(profile);
+  const trialRemaining = onboardingTrialQuestionsRemaining(profile, trialMax);
+  const dailyCount = Math.max(0, Math.min(MAX_DAILY_CHAT_TURNS, dailyCountToday));
+  const dailyRemainingToday = Math.max(0, MAX_DAILY_CHAT_TURNS - dailyCount);
+  return {
+    trialMax,
+    trialUsed,
+    trialRemaining,
+    dailyMax: MAX_DAILY_CHAT_TURNS,
+    dailyCountToday: dailyCount,
+    dailyRemainingToday,
+    effectiveRemaining: effectiveChatQuotaRemaining(
+      profile,
+      dailyRemainingToday,
+      trialMax,
+    ),
+    vnDateToday: todayIsoVietnam(),
   };
 }
 
@@ -128,6 +168,36 @@ type SearchOpts = {
   ascending: boolean;
 };
 
+async function loadTraCuuAskCount(
+  admin: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2.49.1").createClient>,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await admin
+    .from("tra_cuu_results_ask_idempotency")
+    .select("id, tra_cuu_results_threads!inner(user_id)", {
+      count: "exact",
+      head: true,
+    })
+    .eq("status", "done")
+    .eq("tra_cuu_results_threads.user_id", userId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function loadDailyCountToday(
+  admin: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2.49.1").createClient>,
+  userId: string,
+  vnDate: string,
+): Promise<number> {
+  const { data, error } = await admin.rpc("get_day_luan_daily_count", {
+    p_user: userId,
+    p_vn_date: vnDate,
+  });
+  if (error) throw error;
+  const n = typeof data === "number" ? data : Number.parseInt(String(data ?? 0), 10);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
 async function loadDayLuanAskCounts(
   admin: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2.49.1").createClient>,
   userIds: string[],
@@ -190,14 +260,14 @@ async function searchUsers(
   if (error) throw error;
 
   const rows = (data ?? []) as ProfileRow[];
-  const askCounts = await loadDayLuanAskCounts(
-    admin,
-    rows.map((r) => r.id),
-  );
+  const [askCounts, trialMax] = await Promise.all([
+    loadDayLuanAskCounts(admin, rows.map((r) => r.id)),
+    readOnboardingTrialQuestionsMax(admin),
+  ]);
 
   const users = rows.map((row) => ({
     ...row,
-    flags: computeFlags(row),
+    flags: computeFlags(row, trialMax),
     bazi_luan_click_count: row.bazi_luan_click_count ?? 0,
     tieu_van_luan_click_count: row.tieu_van_luan_click_count ?? 0,
     day_luan_follow_up_click_count: row.day_luan_follow_up_click_count ?? 0,
@@ -246,13 +316,20 @@ async function userDetail(
   }
 
   const row = profile as ProfileRow;
+  const vnToday = todayIsoVietnam();
 
   const [
+    trialMax,
     { data: paymentOrders, error: oErr },
     { data: referralRewards, error: rErr },
-    { data: creditLedger, error: lErr },
     { data: referredByProfile },
+    { data: traCuuThreads, error: tcErr },
+    { data: dayLuanThreads, error: dlErr },
+    dailyCountToday,
+    traCuuAskCount,
+    askCounts,
   ] = await Promise.all([
+    readOnboardingTrialQuestionsMax(admin),
     admin
       .from("payment_orders")
       .select(
@@ -269,12 +346,6 @@ async function userDetail(
       .eq("referrer_profile_id", userId)
       .order("created_at", { ascending: false })
       .limit(10),
-    admin
-      .from("credit_ledger")
-      .select("id, delta, balance_after, reason, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(10),
     row.referred_by
       ? admin
         .from("profiles")
@@ -282,25 +353,65 @@ async function userDetail(
         .eq("id", row.referred_by)
         .maybeSingle()
       : Promise.resolve({ data: null }),
+    admin
+      .from("tra_cuu_results_threads")
+      .select(
+        "id, session_key, follow_up_count, anchor_intro, created_at, updated_at",
+      )
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(15),
+    admin
+      .from("day_luan_threads")
+      .select("id, day_iso, follow_up_count, created_at, updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(15),
+    loadDailyCountToday(admin, userId, vnToday),
+    loadTraCuuAskCount(admin, userId),
+    loadDayLuanAskCounts(admin, [userId]),
   ]);
 
   if (oErr) throw oErr;
   if (rErr) throw rErr;
-  if (lErr) throw lErr;
+  if (tcErr) throw tcErr;
+  if (dlErr) throw dlErr;
 
-  const askCounts = await loadDayLuanAskCounts(admin, [userId]);
+  const traCuuThreadsOut = (traCuuThreads ?? []).map((t) => {
+    const rec = t as {
+      id: string;
+      session_key: string;
+      follow_up_count: number;
+      anchor_intro: string;
+      created_at: string;
+      updated_at: string;
+    };
+    const intro = String(rec.anchor_intro ?? "");
+    return {
+      id: rec.id,
+      session_key: rec.session_key,
+      follow_up_count: rec.follow_up_count ?? 0,
+      has_anchor_intro: intro.trim().length > 0,
+      anchor_intro_preview: intro.trim().slice(0, 120),
+      created_at: rec.created_at,
+      updated_at: rec.updated_at,
+    };
+  });
 
   return {
     profile: row,
-    flags: computeFlags(row),
+    flags: computeFlags(row, trialMax),
+    quota: buildQuotaSnapshot(row, trialMax, dailyCountToday),
     referrer: referredByProfile ?? null,
     bazi_luan_click_count: row.bazi_luan_click_count ?? 0,
     tieu_van_luan_click_count: row.tieu_van_luan_click_count ?? 0,
     day_luan_follow_up_click_count: row.day_luan_follow_up_click_count ?? 0,
     day_luan_ai_ask_count: askCounts.get(userId) ?? 0,
+    tra_cuu_ai_ask_count: traCuuAskCount,
+    traCuuThreads: traCuuThreadsOut,
+    dayLuanThreads: dayLuanThreads ?? [],
     paymentOrders: paymentOrders ?? [],
     referralRewards: referralRewards ?? [],
-    creditLedger: creditLedger ?? [],
   };
 }
 

@@ -6,7 +6,15 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Banknote, BookOpen, CalendarDays, ShoppingBag, UserPlus } from "lucide-react";
+import {
+  Banknote,
+  BookOpen,
+  CalendarDays,
+  MessageCircle,
+  ShoppingBag,
+  Sparkles,
+  UserPlus,
+} from "lucide-react";
 
 import { AdminShell, EnvBanner, AdminForbiddenHint } from "~/components/admin/AdminShell";
 import { AdminTabPanels } from "~/components/admin/AdminTabPanels";
@@ -34,6 +42,10 @@ const emptyStats: AdminDashboardPayload = {
     neverSubscribed: 0,
     baziReadingUnlocked: 0,
     tieuVanReadingActive: 0,
+    onboardingTrialActive: 0,
+    onboardingTrialExhausted: 0,
+    traCuuThreadsLast30d: 0,
+    traCuuAnchorsLast30d: 0,
     revenueByBucketVnd: { subscription: 0, addon: 0, legacy: 0 },
     ordersBySku: {},
     revenueMomPct: "—",
@@ -126,17 +138,12 @@ export default function AdminDashboard() {
 
   const display = dashboardStatsQuery.data ?? emptyStats;
   const chartMonthly = display.monthly.length ? display.monthly : emptyStats.monthly;
-  const overviewActive = activeNav === "overview";
-  const reportsActive = activeNav === "reports";
   const statsAwaitingData = !dashboardStatsQuery.data;
-  const statsLoading =
-    overviewActive &&
+  const statsFetchPending =
     statsAwaitingData &&
     (dashboardStatsQuery.isFetching || authLoading);
-  const reportsTabLoading =
-    reportsActive &&
-    statsAwaitingData &&
-    (dashboardStatsQuery.isFetching || authLoading);
+  const statsLoading = activeNav === "overview" && statsFetchPending;
+  const reportsTabLoading = activeNav === "reports" && statsFetchPending;
   const statsError = dashboardStatsQuery.error?.message ?? null;
 
   const isRefreshing =
@@ -233,6 +240,36 @@ export default function AdminDashboard() {
               value={String(display.totals.tieuVanReadingActive)}
               footnote="tieu_van_reading_expires_at > now"
               icon={<BookOpen className="size-4" strokeWidth={1.75} />}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Trial chat còn lượt"
+              loading={statsLoading}
+              value={String(display.totals.onboardingTrialActive)}
+              footnote="never-sub, used < max (app_config)"
+              icon={<Sparkles className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Trial đã hết lượt"
+              loading={statsLoading}
+              value={String(display.totals.onboardingTrialExhausted)}
+              footnote="never-sub, used ≥ max"
+              icon={<Sparkles className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Phiên tra cứu (30 ngày)"
+              loading={statsLoading}
+              value={String(display.totals.traCuuThreadsLast30d)}
+              footnote="tra_cuu_results_threads"
+              icon={<MessageCircle className="size-4" strokeWidth={1.75} />}
+            />
+            <StatCard
+              label="Tra cứu có intro (30 ngày)"
+              loading={statsLoading}
+              value={String(display.totals.traCuuAnchorsLast30d)}
+              footnote="anchor_intro đã lưu (trừ quota)"
+              icon={<MessageCircle className="size-4" strokeWidth={1.75} />}
             />
           </div>
           <RevenueTrendCard

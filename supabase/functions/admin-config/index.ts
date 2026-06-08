@@ -197,6 +197,27 @@ Deno.serve(async (req) => {
     );
   }
 
+  if (configKey === "onboarding_trial_questions_max" && "value" in patch) {
+    const raw = patch.value;
+    const n = typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+      ? Number.parseInt(raw.trim(), 10)
+      : NaN;
+    if (!Number.isFinite(n) || n < 1) {
+      return json(
+        {
+          error: {
+            code: "BAD_REQUEST",
+            message: "onboarding_trial_questions_max phải là số nguyên ≥ 1",
+          },
+        },
+        400,
+      );
+    }
+    patch.value = String(Math.floor(n));
+  }
+
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });

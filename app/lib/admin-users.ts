@@ -8,6 +8,39 @@ export type AdminUserFlags = {
   canUseBaziReading: boolean;
   canUseTieuVanReading: boolean;
   isNeverSubscribed: boolean;
+  hasOnboardingTrialAccess: boolean;
+  trialExhausted: boolean;
+  canAccessPaidCalendar: boolean;
+};
+
+export type AdminUserQuotaSnapshot = {
+  trialMax: number;
+  trialUsed: number;
+  trialRemaining: number;
+  dailyMax: number;
+  dailyCountToday: number;
+  dailyRemainingToday: number;
+  /** min(daily, trial) for never-sub; daily only when subscribed. */
+  effectiveRemaining: number;
+  vnDateToday: string;
+};
+
+export type AdminTraCuuThreadSummary = {
+  id: string;
+  session_key: string;
+  follow_up_count: number;
+  has_anchor_intro: boolean;
+  anchor_intro_preview: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminDayLuanThreadSummary = {
+  id: string;
+  day_iso: string;
+  follow_up_count: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type AdminUserListItem = {
@@ -26,10 +59,11 @@ export type AdminUserListItem = {
   bazi_luan_click_count: number;
   /** Tổng lifetime: mở luận tiểu vận tháng (có quyền). */
   tieu_van_luan_click_count: number;
-  /** Tổng lifetime: gửi hỏi thêm luận ngày (sau rate limit). */
+  /** Tổng lifetime: bấm CTA "Hỏi tiếp về ngày này". */
   day_luan_follow_up_click_count: number;
-  /** Completed follow-up asks in luận giải ngày (day-luan-chat). */
+  /** Completed follow-up asks in luận ngày (day-luan-chat). */
   day_luan_ai_ask_count: number;
+  onboarding_trial_questions_used?: number;
 };
 
 export type UserEngagementSort =
@@ -74,6 +108,7 @@ export type AdminUserDetailResponse = {
     birth_edit_count: number | null;
     birth_edit_window_start: string | null;
     onboarding_completed_at: string | null;
+    onboarding_trial_questions_used: number | null;
     ngay_sinh: string | null;
     gio_sinh: string | null;
     gioi_tinh: string | null;
@@ -81,10 +116,14 @@ export type AdminUserDetailResponse = {
     la_so?: unknown;
   };
   flags: AdminUserFlags;
+  quota: AdminUserQuotaSnapshot;
   bazi_luan_click_count: number;
   tieu_van_luan_click_count: number;
   day_luan_follow_up_click_count: number;
   day_luan_ai_ask_count: number;
+  tra_cuu_ai_ask_count: number;
+  traCuuThreads: AdminTraCuuThreadSummary[];
+  dayLuanThreads: AdminDayLuanThreadSummary[];
   referrer: { id: string; email: string | null; referral_code: string | null } | null;
   paymentOrders: AdminPaymentOrderSummary[];
   referralRewards: {
@@ -97,6 +136,18 @@ export type AdminUserDetailResponse = {
     created_at: string;
   }[];
 };
+
+function normalizeFlags(raw: Partial<AdminUserFlags> | undefined): AdminUserFlags {
+  return {
+    subscriptionActive: raw?.subscriptionActive ?? false,
+    canUseBaziReading: raw?.canUseBaziReading ?? false,
+    canUseTieuVanReading: raw?.canUseTieuVanReading ?? false,
+    isNeverSubscribed: raw?.isNeverSubscribed ?? false,
+    hasOnboardingTrialAccess: raw?.hasOnboardingTrialAccess ?? false,
+    trialExhausted: raw?.trialExhausted ?? false,
+    canAccessPaidCalendar: raw?.canAccessPaidCalendar ?? false,
+  };
+}
 
 export async function searchAdminUsers(
   params: AdminUserSearchParams,
@@ -119,7 +170,10 @@ export async function searchAdminUsers(
   }
 
   return {
-    users: payload.users,
+    users: payload.users.map((u) => ({
+      ...u,
+      flags: normalizeFlags(u.flags),
+    })),
     total:
       typeof payload.total === "number" && Number.isFinite(payload.total)
         ? payload.total
@@ -135,14 +189,61 @@ export async function searchAdminUsers(
   };
 }
 
+function normalizeUserDetail(
+  raw: AdminUserDetailResponse,
+): AdminUserDetailResponse {
+  const trialUsed = Math.max(
+    0,
+    Math.floor(raw.profile.onboarding_trial_questions_used ?? 0),
+  );
+  const trialMax = raw.quota?.trialMax ?? 5;
+  const trialRemaining = Math.max(0, trialMax - trialUsed);
+  const dailyMax = raw.quota?.dailyMax ?? 10;
+  const dailyRemainingToday = raw.quota?.dailyRemainingToday ?? dailyMax;
+  const isNeverSub = raw.flags?.isNeverSubscribed ?? false;
+  const effectiveRemaining =
+    raw.quota?.effectiveRemaining ??
+    (isNeverSub && trialRemaining > 0
+      ? Math.min(dailyRemainingToday, trialRemaining)
+      : isNeverSub
+        ? 0
+        : dailyRemainingToday);
+  const vnDateToday =
+    raw.quota?.vnDateToday ??
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  return {
+    ...raw,
+    flags: normalizeFlags(raw.flags),
+    quota: {
+      trialMax: raw.quota?.trialMax ?? trialMax,
+      trialUsed: raw.quota?.trialUsed ?? trialUsed,
+      trialRemaining: raw.quota?.trialRemaining ?? trialRemaining,
+      dailyMax: raw.quota?.dailyMax ?? dailyMax,
+      dailyCountToday: raw.quota?.dailyCountToday ?? 0,
+      dailyRemainingToday: raw.quota?.dailyRemainingToday ?? dailyRemainingToday,
+      effectiveRemaining,
+      vnDateToday,
+    },
+    tra_cuu_ai_ask_count: raw.tra_cuu_ai_ask_count ?? 0,
+    traCuuThreads: raw.traCuuThreads ?? [],
+    dayLuanThreads: raw.dayLuanThreads ?? [],
+  };
+}
+
 export async function fetchAdminUserDetail(
   userId: string,
   options?: { includeLaSo?: boolean },
 ): Promise<AdminUserDetailResponse> {
-  return adminFunctionGet<AdminUserDetailResponse>("admin-users", {
+  const raw = await adminFunctionGet<AdminUserDetailResponse>("admin-users", {
     id: userId,
     ...(options?.includeLaSo ? { includeLaSo: "1" } : {}),
   });
+  return normalizeUserDetail(raw);
 }
 
 export type PatchEntitlementsBody = {

@@ -190,6 +190,11 @@ export function AdminTabPanels({
           <code className="rounded bg-admin-canvas px-1 text-[11px]">admin-config</code>
           .
         </p>
+        <p className="text-xs text-admin-text-secondary leading-relaxed">
+          <strong className="font-medium text-foreground">onboarding_trial_questions_max</strong>{" "}
+          — số lượt chat trial lifetime cho user chưa từng sub (mặc định 5). Đổi có hiệu lực
+          ngay trên Edge, không cần redeploy function.
+        </p>
         <p className="text-xs text-amber-900/90">
           Banner sticky: nên chỉnh tab{" "}
           <strong className="font-medium">Banner đầu trang</strong> để tránh lệch JSON

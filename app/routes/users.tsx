@@ -276,6 +276,16 @@ export default function UsersSearchRoute() {
                             TV
                           </span>
                         ) : null}
+                        {u.flags.hasOnboardingTrialAccess ? (
+                          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-900">
+                            Trial
+                          </span>
+                        ) : null}
+                        {u.flags.trialExhausted ? (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-950">
+                            Hết trial
+                          </span>
+                        ) : null}
                       </div>
                     </td>
                     <td

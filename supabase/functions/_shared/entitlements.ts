@@ -9,6 +9,16 @@ export type ProfileEntitlements = {
   tieu_van_reading_expires_at: string | null;
 };
 
+export type ProfileTrialEntitlements = ProfileEntitlements & {
+  onboarding_trial_questions_used?: number | null;
+};
+
+/** Default when `app_config.onboarding_trial_questions_max` is unset. */
+export const DEFAULT_ONBOARDING_TRIAL_QUESTIONS_MAX = 5;
+
+/** Shared daily chat pool cap (luận ngày + tra cứu). */
+export const MAX_DAILY_CHAT_TURNS = 10;
+
 export function subscriptionActive(
   expires: string | null | undefined,
 ): boolean {
@@ -22,9 +32,57 @@ export function canUseCalendar(profile: ProfileEntitlements): boolean {
 
 /** Chưa từng đăng ký gói — cho phép đọc lịch teaser (không chặn 402 như hết hạn). */
 export function isNeverSubscribedUser(
-  profile: ProfileEntitlements,
+  profile: ProfileEntitlements | null | undefined,
 ): boolean {
+  if (!profile) return false;
   return profile.subscription_expires_at == null;
+}
+
+export function onboardingTrialQuestionsUsed(
+  profile: ProfileTrialEntitlements | null | undefined,
+): number {
+  const raw = profile?.onboarding_trial_questions_used ?? 0;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.floor(raw));
+}
+
+/** Min(daily remaining, trial remaining) for never-sub; else daily only. */
+export function effectiveChatQuotaRemaining(
+  profile: ProfileTrialEntitlements | null | undefined,
+  dailyRemaining: number,
+  max = DEFAULT_ONBOARDING_TRIAL_QUESTIONS_MAX,
+): number {
+  const daily = Math.max(0, dailyRemaining);
+  if (!profile) return 0;
+  const trialRem = onboardingTrialQuestionsRemaining(profile, max);
+  if (isNeverSubscribedUser(profile)) {
+    return trialRem > 0 ? Math.min(daily, trialRem) : 0;
+  }
+  return daily;
+}
+
+export function onboardingTrialQuestionsRemaining(
+  profile: ProfileTrialEntitlements | null | undefined,
+  max = DEFAULT_ONBOARDING_TRIAL_QUESTIONS_MAX,
+): number {
+  if (!profile || !isNeverSubscribedUser(profile)) return 0;
+  const cap = max > 0 ? max : DEFAULT_ONBOARDING_TRIAL_QUESTIONS_MAX;
+  return Math.max(0, cap - onboardingTrialQuestionsUsed(profile));
+}
+
+export function hasOnboardingTrialAccess(
+  profile: ProfileTrialEntitlements | null | undefined,
+  max = DEFAULT_ONBOARDING_TRIAL_QUESTIONS_MAX,
+): boolean {
+  return onboardingTrialQuestionsRemaining(profile, max) > 0;
+}
+
+export function canAccessPaidCalendar(
+  profile: ProfileTrialEntitlements | null | undefined,
+  max = DEFAULT_ONBOARDING_TRIAL_QUESTIONS_MAX,
+): boolean {
+  if (!profile) return false;
+  return canUseCalendar(profile) || hasOnboardingTrialAccess(profile, max);
 }
 
 export function isTraCuuPickChonNgay(

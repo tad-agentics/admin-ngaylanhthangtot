@@ -123,6 +123,36 @@ export default function UserDetailRoute() {
                   <dd>{formatDt(data.profile.subscription_expires_at)}</dd>
                 </div>
                 <div>
+                  <dt className="text-admin-text-secondary">Lịch / tra cứu</dt>
+                  <dd>
+                    {data.flags.canAccessPaidCalendar ? (
+                      <span className="text-emerald-800">Được phép</span>
+                    ) : (
+                      <span className="text-red-800">Không (hết sub + hết trial)</span>
+                    )}
+                    {data.flags.hasOnboardingTrialAccess ? (
+                      <span className="mt-0.5 block text-xs text-admin-text-secondary">
+                        Trial còn {data.quota.trialRemaining}/{data.quota.trialMax} lượt
+                      </span>
+                    ) : null}
+                    {data.flags.trialExhausted ? (
+                      <span className="mt-0.5 block text-xs text-amber-900">
+                        Trial đã hết ({data.quota.trialUsed}/{data.quota.trialMax})
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Pool chat hôm nay (VN)</dt>
+                  <dd className="tabular-nums">
+                    {data.quota.dailyCountToday}/{data.quota.dailyMax} đã dùng
+                    <span className="mt-0.5 block text-xs text-admin-text-secondary">
+                      Còn {data.quota.dailyRemainingToday} hôm nay · hiệu lực chat{" "}
+                      {data.quota.effectiveRemaining} · ngày {data.quota.vnDateToday}
+                    </span>
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-admin-text-secondary">Luận BT</dt>
                   <dd>
                     {data.profile.bazi_reading_unlocked_at
@@ -202,7 +232,24 @@ export default function UserDetailRoute() {
                   <dt className="text-admin-text-secondary">Lá số recompute</dt>
                   <dd>{data.profile.la_so_recompute_status ?? "—"}</dd>
                 </div>
+                {data.flags.isNeverSubscribed ? (
+                  <div className="sm:col-span-2">
+                    <dt className="text-admin-text-secondary">Onboarding trial (lifetime)</dt>
+                    <dd className="tabular-nums">
+                      Đã dùng {data.quota.trialUsed} / {data.quota.trialMax} lượt
+                      <span className="ml-1 text-xs text-admin-text-secondary">
+                        (read-only — chỉ Edge trừ sau câu trả lời thành công)
+                      </span>
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
+              <p className="mt-3 rounded-lg bg-admin-canvas/80 px-3 py-2 text-xs text-admin-text-secondary leading-relaxed">
+                <strong className="font-medium text-foreground">Một lượt chat</strong> = intro
+                tra cứu (lần đầu lưu anchor) hoặc một câu hỏi follow-up (tra cứu / luận ngày)
+                hoặc một lượt luận ngày full read — chỉ trừ sau khi server giao câu trả lời
+                thành công. Pick ngày tra cứu không trừ quota.
+              </p>
               <div className="mt-4 border-t border-admin-border-subtle pt-4">
                 <button
                   type="button"
@@ -231,6 +278,89 @@ export default function UserDetailRoute() {
                 });
               }}
             />
+
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">Chat tra cứu (debug)</h2>
+              <p className="text-xs text-admin-text-secondary">
+                Đã gửi câu hỏi thành công: {data.tra_cuu_ai_ask_count} · Phiên gần nhất
+                (tối đa 15)
+              </p>
+              {data.traCuuThreads.length === 0 ? (
+                <p className="text-sm text-admin-text-secondary">Chưa có phiên.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-admin-border-subtle">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-admin-canvas/60 text-left text-xs uppercase text-admin-text-secondary">
+                        <th className="px-3 py-2">Session</th>
+                        <th className="px-3 py-2">Intro</th>
+                        <th className="px-3 py-2">Follow-up</th>
+                        <th className="px-3 py-2">Cập nhật</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.traCuuThreads.map((t) => (
+                        <tr
+                          key={t.id}
+                          className="border-t border-admin-border-subtle/80"
+                        >
+                          <td className="px-3 py-2 font-mono text-[11px]">
+                            {t.session_key}
+                          </td>
+                          <td className="px-3 py-2 text-xs">
+                            {t.has_anchor_intro ? (
+                              <span title={t.anchor_intro_preview}>Có</span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">{t.follow_up_count}</td>
+                          <td className="px-3 py-2 text-xs whitespace-nowrap">
+                            {formatDt(t.updated_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">Luận ngày chat (debug)</h2>
+              <p className="text-xs text-admin-text-secondary">
+                Follow-up đã giao: {data.day_luan_ai_ask_count} lần
+              </p>
+              {data.dayLuanThreads.length === 0 ? (
+                <p className="text-sm text-admin-text-secondary">Chưa có thread.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-admin-border-subtle">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-admin-canvas/60 text-left text-xs uppercase text-admin-text-secondary">
+                        <th className="px-3 py-2">Ngày</th>
+                        <th className="px-3 py-2">Follow-up</th>
+                        <th className="px-3 py-2">Cập nhật</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.dayLuanThreads.map((t) => (
+                        <tr
+                          key={t.id}
+                          className="border-t border-admin-border-subtle/80"
+                        >
+                          <td className="px-3 py-2 font-mono text-xs">{t.day_iso}</td>
+                          <td className="px-3 py-2 tabular-nums">{t.follow_up_count}</td>
+                          <td className="px-3 py-2 text-xs whitespace-nowrap">
+                            {formatDt(t.updated_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
 
             <section className="space-y-2">
               <h2 className="text-sm font-semibold">Đơn gần đây</h2>

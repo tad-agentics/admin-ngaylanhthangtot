@@ -139,7 +139,7 @@ export default function UsersSearchRoute() {
           <h1 className="text-lg font-semibold text-foreground">Người dùng</h1>
           <p className="mt-1 text-sm text-admin-text-secondary">
             Tìm theo email, user id hoặc mã giới thiệu. Bấm tiêu đề cột Trial chat /
-            Luận BT / Hỏi tiếp ngày để sắp xếp cao→thấp hoặc thấp→cao.
+            Luận BT / Click &ldquo;Hỏi tiếp&rdquo; để sắp xếp cao→thấp hoặc thấp→cao.
           </p>
         </div>
 
@@ -232,7 +232,7 @@ export default function UsersSearchRoute() {
                     onSort={toggleEngagementSort}
                   />
                   <SortableEngagementHeader
-                    label="Hỏi tiếp ngày"
+                    label='Click "Hỏi tiếp"'
                     sortKey="day_luan_follow_up"
                     activeSort={sort}
                     activeOrder={order}
@@ -285,20 +285,11 @@ export default function UsersSearchRoute() {
                     </td>
                     <td
                       className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
-                      title="Onboarding free chat (lifetime, never-sub). Chỉ trừ sau câu trả lời thành công."
+                      title="Onboarding free chat: còn lại / tối đa (lifetime). Chỉ trừ sau câu trả lời thành công."
                     >
-                      {u.quota ? (
-                        <>
-                          {u.quota.trialUsed}/{u.quota.trialMax}
-                          {u.flags.isNeverSubscribed && u.quota.trialRemaining > 0 ? (
-                            <span className="mt-0.5 block text-[10px] text-sky-900">
-                              còn {u.quota.trialRemaining}
-                            </span>
-                          ) : null}
-                        </>
-                      ) : (
-                        u.onboarding_trial_questions_used ?? 0
-                      )}
+                      {u.quota
+                        ? `${u.quota.trialRemaining}/${u.quota.trialMax}`
+                        : "—"}
                     </td>
                     <td
                       className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
@@ -352,7 +343,7 @@ export default function UsersSearchRoute() {
                         ? "Luận BT"
                         : sort === "onboarding_trial"
                           ? "Trial chat"
-                          : "Hỏi tiếp ngày"}{" "}
+                          : 'Click "Hỏi tiếp"'}{" "}
                       {order === "desc" ? "cao→thấp" : "thấp→cao"}
                     </span>
                   ) : null}

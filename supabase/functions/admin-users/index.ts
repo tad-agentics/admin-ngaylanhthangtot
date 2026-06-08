@@ -117,12 +117,17 @@ function clampOffset(raw: string | null): number {
   return Math.min(n, 50_000);
 }
 
-type SortField = "created_at" | "bazi_luan" | "day_luan_follow_up";
+type SortField =
+  | "created_at"
+  | "bazi_luan"
+  | "day_luan_follow_up"
+  | "onboarding_trial";
 
 const SORT_COLUMNS: Record<SortField, string> = {
   created_at: "created_at",
   bazi_luan: "bazi_luan_click_count",
   day_luan_follow_up: "day_luan_follow_up_click_count",
+  onboarding_trial: "onboarding_trial_questions_used",
 };
 
 function parseSort(raw: string | null | undefined): SortField {
@@ -135,6 +140,12 @@ function parseSort(raw: string | null | undefined): SortField {
     v === "day_luan_follow_up_click_count"
   ) {
     return "day_luan_follow_up";
+  }
+  if (
+    v === "onboarding_trial" || v === "trial" ||
+    v === "onboarding_trial_questions_used"
+  ) {
+    return "onboarding_trial";
   }
   return "created_at";
 }
@@ -254,6 +265,11 @@ async function searchUsers(
   const users = rows.map((row) => ({
     ...row,
     flags: computeFlags(row, trialMax),
+    quota: {
+      trialMax,
+      trialUsed: onboardingTrialQuestionsUsed(row),
+      trialRemaining: onboardingTrialQuestionsRemaining(row, trialMax),
+    },
     bazi_luan_click_count: row.bazi_luan_click_count ?? 0,
     day_luan_follow_up_click_count: row.day_luan_follow_up_click_count ?? 0,
     day_luan_ai_ask_count: askCounts.get(row.id) ?? 0,
@@ -310,6 +326,7 @@ async function userDetail(
     { data: referredByProfile },
     { data: traCuuThreads, error: tcErr },
     { data: dayLuanThreads, error: dlErr },
+    { data: trialEvents, error: teErr },
     dailyCountToday,
     traCuuAskCount,
     askCounts,
@@ -352,6 +369,12 @@ async function userDetail(
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(15),
+    admin
+      .from("onboarding_trial_question_events")
+      .select("id, source, context, turn_number, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(25),
     loadDailyCountToday(admin, userId, vnToday),
     loadTraCuuAskCount(admin, userId),
     loadDayLuanAskCounts(admin, [userId]),
@@ -361,6 +384,7 @@ async function userDetail(
   if (rErr) throw rErr;
   if (tcErr) throw tcErr;
   if (dlErr) throw dlErr;
+  if (teErr) throw teErr;
 
   const traCuuThreadsOut = (traCuuThreads ?? []).map((t) => {
     const rec = t as {
@@ -394,6 +418,22 @@ async function userDetail(
     tra_cuu_ai_ask_count: traCuuAskCount,
     traCuuThreads: traCuuThreadsOut,
     dayLuanThreads: dayLuanThreads ?? [],
+    trialEvents: (trialEvents ?? []).map((e) => {
+      const rec = e as {
+        id: string;
+        source: string;
+        context: Record<string, unknown> | null;
+        turn_number: number;
+        created_at: string;
+      };
+      return {
+        id: rec.id,
+        source: rec.source,
+        context: rec.context,
+        turn_number: rec.turn_number,
+        created_at: rec.created_at,
+      };
+    }),
     paymentOrders: paymentOrders ?? [],
     referralRewards: referralRewards ?? [],
   };

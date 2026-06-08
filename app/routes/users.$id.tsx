@@ -10,7 +10,10 @@ import {
 import { UserEntitlementsForm } from "~/components/admin/UserEntitlementsForm";
 import { fetchReferralLinks } from "~/lib/admin-referrals";
 import { adminDeleteUser } from "~/lib/admin-user-actions";
-import { fetchAdminUserDetail } from "~/lib/admin-users";
+import {
+  fetchAdminUserDetail,
+  formatOnboardingTrialSource,
+} from "~/lib/admin-users";
 import { formatVnd } from "~/lib/admin-stats";
 import { useAuth } from "~/lib/auth";
 import { adminKeys } from "~/lib/query-keys";
@@ -265,6 +268,56 @@ export default function UserDetailRoute() {
                 });
               }}
             />
+
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">Onboarding free chat</h2>
+              <p className="text-xs text-admin-text-secondary">
+                Lifetime: {data.quota.trialUsed}/{data.quota.trialMax} lượt
+                {data.flags.isNeverSubscribed
+                  ? ` · còn ${data.quota.trialRemaining}`
+                  : " · user đã/đang sub (counter giữ nguyên)"}
+              </p>
+              {data.trialEvents.length === 0 ? (
+                <p className="text-sm text-admin-text-secondary">
+                  {data.quota.trialUsed > 0
+                    ? "Chưa có log chi tiết (dùng trước khi bật tracking) — chỉ thấy tổng trên profile."
+                    : "Chưa dùng lượt trial."}
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-admin-border-subtle">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-admin-canvas/60 text-left text-xs uppercase text-admin-text-secondary">
+                        <th className="px-3 py-2">Lượt</th>
+                        <th className="px-3 py-2">Nguồn</th>
+                        <th className="px-3 py-2">Thời điểm</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.trialEvents.map((ev) => (
+                        <tr
+                          key={ev.id}
+                          className="border-t border-admin-border-subtle/80"
+                        >
+                          <td className="px-3 py-2 tabular-nums">
+                            #{ev.turn_number}
+                          </td>
+                          <td
+                            className="px-3 py-2 text-xs"
+                            title={ev.source}
+                          >
+                            {formatOnboardingTrialSource(ev.source)}
+                          </td>
+                          <td className="px-3 py-2 text-xs whitespace-nowrap">
+                            {formatDt(ev.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
 
             <section className="space-y-2">
               <h2 className="text-sm font-semibold">Chat tra cứu (debug)</h2>

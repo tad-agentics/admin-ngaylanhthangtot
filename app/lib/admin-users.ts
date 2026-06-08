@@ -42,6 +42,20 @@ export type AdminDayLuanThreadSummary = {
   updated_at: string;
 };
 
+export type AdminUserListQuota = {
+  trialMax: number;
+  trialUsed: number;
+  trialRemaining: number;
+};
+
+export type AdminOnboardingTrialEvent = {
+  id: string;
+  source: string;
+  context: Record<string, unknown> | null;
+  turn_number: number;
+  created_at: string;
+};
+
 export type AdminUserListItem = {
   id: string;
   email: string | null;
@@ -53,6 +67,7 @@ export type AdminUserListItem = {
   referral_reward_total_vnd: number | null;
   created_at: string;
   flags: AdminUserFlags;
+  quota?: AdminUserListQuota;
   /** Tổng lifetime: mở luận la-so-chi-tiet (có quyền, không preview). */
   bazi_luan_click_count: number;
   /** Tổng lifetime: bấm CTA "Hỏi tiếp về ngày này". */
@@ -65,7 +80,8 @@ export type AdminUserListItem = {
 export type UserEngagementSort =
   | "created_at"
   | "bazi_luan"
-  | "day_luan_follow_up";
+  | "day_luan_follow_up"
+  | "onboarding_trial";
 
 export type UserSearchSortOrder = "asc" | "desc";
 
@@ -118,6 +134,7 @@ export type AdminUserDetailResponse = {
   tra_cuu_ai_ask_count: number;
   traCuuThreads: AdminTraCuuThreadSummary[];
   dayLuanThreads: AdminDayLuanThreadSummary[];
+  trialEvents: AdminOnboardingTrialEvent[];
   referrer: { id: string; email: string | null; referral_code: string | null } | null;
   paymentOrders: AdminPaymentOrderSummary[];
   referralRewards: {
@@ -163,10 +180,27 @@ export async function searchAdminUsers(
   }
 
   return {
-    users: payload.users.map((u) => ({
-      ...u,
-      flags: normalizeFlags(u.flags),
-    })),
+    users: payload.users.map((u) => {
+      const trialUsed = Math.max(
+        0,
+        Math.floor(
+          u.quota?.trialUsed ?? u.onboarding_trial_questions_used ?? 0,
+        ),
+      );
+      const trialMax = u.quota?.trialMax ?? 5;
+      return {
+        ...u,
+        flags: normalizeFlags(u.flags),
+        quota: {
+          trialMax,
+          trialUsed,
+          trialRemaining: Math.max(
+            0,
+            u.quota?.trialRemaining ?? trialMax - trialUsed,
+          ),
+        },
+      };
+    }),
     total:
       typeof payload.total === "number" && Number.isFinite(payload.total)
         ? payload.total
@@ -225,7 +259,25 @@ function normalizeUserDetail(
     tra_cuu_ai_ask_count: raw.tra_cuu_ai_ask_count ?? 0,
     traCuuThreads: raw.traCuuThreads ?? [],
     dayLuanThreads: raw.dayLuanThreads ?? [],
+    trialEvents: raw.trialEvents ?? [],
   };
+}
+
+export function formatOnboardingTrialSource(source: string): string {
+  switch (source) {
+    case "tra-cuu-results-chat:anchor":
+      return "Tra cứu · intro";
+    case "tra-cuu-results-chat:answer":
+      return "Tra cứu · hỏi tiếp";
+    case "tra-cuu-results-chat:answer-idempotent":
+      return "Tra cứu · hỏi tiếp (retry)";
+    case "day-luan-chat:ask":
+      return "Luận ngày · hỏi";
+    case "day-luan-chat:ask-idempotent":
+      return "Luận ngày · hỏi (retry)";
+    default:
+      return source;
+  }
 }
 
 export async function fetchAdminUserDetail(

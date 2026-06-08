@@ -138,8 +138,8 @@ export default function UsersSearchRoute() {
         <div>
           <h1 className="text-lg font-semibold text-foreground">Người dùng</h1>
           <p className="mt-1 text-sm text-admin-text-secondary">
-            Tìm theo email, user id hoặc mã giới thiệu. Bấm tiêu đề cột Luận BT /
-            Hỏi tiếp ngày để sắp xếp cao→thấp hoặc thấp→cao.
+            Tìm theo email, user id hoặc mã giới thiệu. Bấm tiêu đề cột Trial chat /
+            Luận BT / Hỏi tiếp ngày để sắp xếp cao→thấp hoặc thấp→cao.
           </p>
         </div>
 
@@ -218,6 +218,13 @@ export default function UsersSearchRoute() {
                     Flags
                   </th>
                   <SortableEngagementHeader
+                    label="Trial chat"
+                    sortKey="onboarding_trial"
+                    activeSort={sort}
+                    activeOrder={order}
+                    onSort={toggleEngagementSort}
+                  />
+                  <SortableEngagementHeader
                     label="Luận BT"
                     sortKey="bazi_luan"
                     activeSort={sort}
@@ -278,6 +285,23 @@ export default function UsersSearchRoute() {
                     </td>
                     <td
                       className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
+                      title="Onboarding free chat (lifetime, never-sub). Chỉ trừ sau câu trả lời thành công."
+                    >
+                      {u.quota ? (
+                        <>
+                          {u.quota.trialUsed}/{u.quota.trialMax}
+                          {u.flags.isNeverSubscribed && u.quota.trialRemaining > 0 ? (
+                            <span className="mt-0.5 block text-[10px] text-sky-900">
+                              còn {u.quota.trialRemaining}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        u.onboarding_trial_questions_used ?? 0
+                      )}
+                    </td>
+                    <td
+                      className="border-b border-admin-border-subtle/80 px-3 py-2.5 tabular-nums text-sm"
                       title="Tổng lifetime: mở luận la-so-chi-tiet (có quyền, không preview)"
                     >
                       {u.bazi_luan_click_count ?? 0}
@@ -324,7 +348,11 @@ export default function UsersSearchRoute() {
                   {sort !== "created_at" ? (
                     <span className="ml-2 text-xs">
                       · sắp xếp{" "}
-                      {sort === "bazi_luan" ? "Luận BT" : "Hỏi tiếp ngày"}{" "}
+                      {sort === "bazi_luan"
+                        ? "Luận BT"
+                        : sort === "onboarding_trial"
+                          ? "Trial chat"
+                          : "Hỏi tiếp ngày"}{" "}
                       {order === "desc" ? "cao→thấp" : "thấp→cao"}
                     </span>
                   ) : null}

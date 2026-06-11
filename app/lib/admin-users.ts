@@ -75,6 +75,9 @@ export type AdminUserListItem = {
   /** Completed follow-up asks in luận ngày (day-luan-chat). */
   day_luan_ai_ask_count: number;
   onboarding_trial_questions_used?: number;
+  ngay_sinh: string | null;
+  gio_sinh: string | null;
+  gioi_tinh: string | null;
 };
 
 export type UserEngagementSort =
@@ -261,6 +264,46 @@ function normalizeUserDetail(
     dayLuanThreads: raw.dayLuanThreads ?? [],
     trialEvents: raw.trialEvents ?? [],
   };
+}
+
+/** profiles.ngay_sinh — Postgres `date` as YYYY-MM-DD. */
+export function formatNgaySinh(raw: string | null | undefined): string {
+  if (!raw?.trim()) return "—";
+  const iso = raw.trim().slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return raw;
+}
+
+/** profiles.gio_sinh — time, thường HH:MM:SS. */
+export function formatGioSinh(raw: string | null | undefined): string {
+  if (!raw?.trim()) return "—";
+  const t = raw.trim();
+  if (t.length >= 5 && t[2] === ":") return t.slice(0, 5);
+  return t;
+}
+
+export function formatGioiTinh(raw: string | null | undefined): string {
+  if (!raw) return "—";
+  if (raw === "nam") return "Nam";
+  if (raw === "nu") return "Nữ";
+  return raw;
+}
+
+export function formatBirthSummary(
+  ngaySinh: string | null | undefined,
+  gioSinh: string | null | undefined,
+  gioiTinh: string | null | undefined,
+): string {
+  const date = formatNgaySinh(ngaySinh);
+  const time = formatGioSinh(gioSinh);
+  const sex = formatGioiTinh(gioiTinh);
+  if (date === "—" && time === "—" && sex === "—") return "—";
+  const parts: string[] = [];
+  if (date !== "—") parts.push(date);
+  if (time !== "—") parts.push(time);
+  if (sex !== "—") parts.push(sex);
+  return parts.join(" · ");
 }
 
 export function formatOnboardingTrialSource(source: string): string {

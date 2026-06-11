@@ -8,6 +8,9 @@ import {
   EnvBanner,
 } from "~/components/admin/AdminShell";
 import {
+  formatBirthSummary,
+  formatGioSinh,
+  formatNgaySinh,
   searchAdminUsers,
   type UserEngagementSort,
   type UserSearchSortOrder,
@@ -184,6 +187,9 @@ export default function UsersSearchRoute() {
                     Email
                   </th>
                   <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
+                    Ngày / giờ sinh
+                  </th>
+                  <th className="border-b border-admin-border-subtle bg-admin-canvas/60 px-3 py-2.5 text-xs font-semibold uppercase text-admin-text-secondary">
                     <button
                       type="button"
                       onClick={() => {
@@ -251,6 +257,21 @@ export default function UsersSearchRoute() {
                       <p className="font-medium">{u.email ?? "—"}</p>
                       <p className="font-mono text-[11px] text-admin-text-secondary">
                         {u.id}
+                      </p>
+                    </td>
+                    <td
+                      className="border-b border-admin-border-subtle/80 px-3 py-2.5 text-xs"
+                      title={formatBirthSummary(
+                        u.ngay_sinh,
+                        u.gio_sinh,
+                        u.gioi_tinh,
+                      )}
+                    >
+                      <p className="whitespace-nowrap tabular-nums">
+                        {formatNgaySinh(u.ngay_sinh)}
+                      </p>
+                      <p className="text-[11px] text-admin-text-secondary whitespace-nowrap tabular-nums">
+                        {formatGioSinh(u.gio_sinh)}
                       </p>
                     </td>
                     <td className="border-b border-admin-border-subtle/80 px-3 py-2.5 text-xs whitespace-nowrap">

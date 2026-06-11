@@ -12,6 +12,9 @@ import { fetchReferralLinks } from "~/lib/admin-referrals";
 import { adminDeleteUser } from "~/lib/admin-user-actions";
 import {
   fetchAdminUserDetail,
+  formatGioSinh,
+  formatGioiTinh,
+  formatNgaySinh,
   formatOnboardingTrialSource,
 } from "~/lib/admin-users";
 import { formatVnd } from "~/lib/admin-stats";
@@ -120,6 +123,22 @@ export default function UserDetailRoute() {
                 <div>
                   <dt className="text-admin-text-secondary">Đăng ký</dt>
                   <dd>{formatDt(data.profile.created_at)}</dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Ngày sinh (dương)</dt>
+                  <dd className="tabular-nums">
+                    {formatNgaySinh(data.profile.ngay_sinh)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Giờ sinh</dt>
+                  <dd className="tabular-nums">
+                    {formatGioSinh(data.profile.gio_sinh)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-text-secondary">Giới tính</dt>
+                  <dd>{formatGioiTinh(data.profile.gioi_tinh)}</dd>
                 </div>
                 <div>
                   <dt className="text-admin-text-secondary">Gói lịch đến</dt>

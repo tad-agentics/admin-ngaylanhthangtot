@@ -3,8 +3,11 @@ import {
   BarChart3,
   ChevronDown,
   CreditCard,
+  FileText,
   Gift,
   LayoutDashboard,
+  ListChecks,
+  Send,
   Ticket,
   LayoutPanelTop,
   Settings,
@@ -32,6 +35,12 @@ const mainMenu: NavItem[] = [
   { id: "referrals", label: "Giới thiệu", icon: Gift, to: "/referrals" },
   { id: "coupons", label: "Mã giảm giá", icon: Ticket, to: "/coupons" },
   { id: "reports", label: "Báo cáo", icon: BarChart3, to: "/?nav=reports" },
+];
+
+const proseMenu: NavItem[] = [
+  { id: "prose-templates", label: "Template Studio", icon: FileText, to: "/prose/templates" },
+  { id: "prose-jobs", label: "Jobs & Review", icon: ListChecks, to: "/prose/jobs" },
+  { id: "prose-publish", label: "Publish", icon: Send, to: "/prose/publish" },
 ];
 
 const managementMenu: NavItem[] = [
@@ -132,6 +141,7 @@ export function AdminSidebar({
 
       <nav className="mt-6 flex-1 overflow-y-auto pb-6">
         <NavSection title="Menu chính" items={mainMenu} activeId={activeId} />
+        <NavSection title="Prose Engine" items={proseMenu} activeId={activeId} />
         <NavSection title="Quản trị" items={managementMenu} activeId={activeId} />
         <div className="mt-6 border-t border-admin-border-subtle pt-6">
           <ul className="space-y-0.5">

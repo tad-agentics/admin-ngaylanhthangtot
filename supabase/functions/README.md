@@ -3,8 +3,12 @@
 Deploy **from this repo**:
 
 ```bash
-supabase functions deploy admin-config admin-user-actions admin-users admin-dashboard-stats --project-ref hptovpbiwvtngorhdhhm
+supabase functions deploy admin-config admin-user-actions admin-users admin-dashboard-stats prose-admin prose-generate --project-ref hptovpbiwvtngorhdhhm
 ```
+
+**Prose engine** (`prose-admin`, `prose-generate`) cần thêm secret `ANTHROPIC_API_KEY`
+(chỉ tồn tại ở Edge Function secrets — không bao giờ ở frontend). Migration:
+`supabase/migrations/20260708100000_prose_engine.sql` + seed templates.
 
 **Engagement tracking** (app functions — patch + deploy from downloaded sources):
 

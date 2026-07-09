@@ -19,4 +19,8 @@ export const adminKeys = {
   couponsAll: () => [...adminKeys.all, "coupons"] as const,
   couponsList: (filters: Record<string, string>) =>
     [...adminKeys.couponsAll(), "list", filters] as const,
+  proseAll: () => [...adminKeys.all, "prose"] as const,
+  proseTemplates: () => [...adminKeys.proseAll(), "templates"] as const,
+  proseJobs: () => [...adminKeys.proseAll(), "jobs"] as const,
+  proseJob: (id: string) => [...adminKeys.proseAll(), "jobs", id] as const,
 };

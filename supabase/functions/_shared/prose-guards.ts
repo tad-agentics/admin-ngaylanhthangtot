@@ -21,6 +21,7 @@ export type Guards = {
   length?: Record<string, { min?: number; max?: number }>;
   unicode?: boolean;
   numeric_consistency?: boolean;
+  canchi_consistency?: boolean;
   similarity?: { threshold?: number };
 };
 
@@ -196,6 +197,26 @@ export function runItemGates(args: {
       detail: missing.length
         ? `số không có trong dữ liệu: ${missing.slice(0, 8).join(", ")}`
         : "mọi con số đều có trong dữ liệu",
+    });
+  }
+
+  // canchi_consistency — every Can+Chi pair named in the prose must exist in
+  // the input data (catches invented "dời sang ngày Kỷ Dậu" recommendations,
+  // which numeric_consistency misses because they contain no digits). Flag
+  // severity: pilot-style cross-day references land in review, not in a fail.
+  if (guards.canchi_consistency !== false) {
+    const CANCHI_RE =
+      /(?:Giáp|Ất|Bính|Đinh|Mậu|Kỷ|Canh|Tân|Nhâm|Quý) (?:Tý|Sửu|Dần|Mão|Thìn|Tỵ|Ngọ|Mùi|Thân|Dậu|Tuất|Hợi)/gu;
+    const inputStr = JSON.stringify(inputData);
+    const pairs = [...new Set(text.normalize("NFC").match(CANCHI_RE) ?? [])];
+    const missing = pairs.filter((p) => !inputStr.includes(p));
+    results.push({
+      gate: "canchi_consistency",
+      ok: missing.length === 0,
+      severity: "flag",
+      detail: missing.length
+        ? `can chi không có trong dữ liệu: ${missing.join(", ")}`
+        : "mọi can chi đều có trong dữ liệu",
     });
   }
 

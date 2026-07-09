@@ -17,6 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminJson, requireAdmin } from "../_shared/admin-auth.ts";
 import { corsHeadersForRequest } from "../_shared/cors.ts";
 import {
+  coerceToSchema,
   type GateResult,
   type Guards,
   runItemGates,
@@ -132,6 +133,7 @@ Deno.serve(async (req) => {
       let usage = { input_tokens: 0, output_tokens: 0 };
       try {
         ({ output, usage } = await callAnthropic(t, item.input_data));
+        output = coerceToSchema(output, t.output_schema);
         gates = runItemGates({
           output,
           inputData: item.input_data,
@@ -201,7 +203,8 @@ Deno.serve(async (req) => {
         "Viết lại toàn bộ, khắc phục các lỗi trên, giữ đúng dữ liệu.",
       ].filter(Boolean).join("\n\n");
 
-      const { output, usage } = await callAnthropic(t, item.input_data, feedback);
+      const { output: rawOut, usage } = await callAnthropic(t, item.input_data, feedback);
+      const output = coerceToSchema(rawOut, t.output_schema);
       const gates = runItemGates({
         output,
         inputData: item.input_data,
@@ -257,7 +260,8 @@ Deno.serve(async (req) => {
       } else {
         throw new Error("Cần template_id hoặc template");
       }
-      const { output, usage } = await callAnthropic(t, data);
+      const { output: rawOut, usage } = await callAnthropic(t, data);
+      const output = coerceToSchema(rawOut, t.output_schema);
       const gates = runItemGates({
         output,
         inputData: data,

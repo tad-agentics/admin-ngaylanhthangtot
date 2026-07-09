@@ -98,6 +98,38 @@ function checkSchema(value: unknown, schema: Schema, at: string, errs: string[])
   }
 }
 
+/**
+ * Repair a small-model tool-use quirk: array fields occasionally arrive as a
+ * STRING containing the JSON array ("[\"a\",\"b\"]"). Walk the schema and
+ * parse such strings back into real arrays; leave everything else untouched.
+ */
+export function coerceToSchema(value: unknown, schema: unknown): unknown {
+  const s = schema as Schema | null;
+  if (!s || typeof s !== "object") return value;
+  if (s.type === "object" && value && typeof value === "object" && !Array.isArray(value)) {
+    const obj: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+    for (const [k, sub] of Object.entries(s.properties ?? {})) {
+      if (k in obj) obj[k] = coerceToSchema(obj[k], sub);
+    }
+    return obj;
+  }
+  if (s.type === "array") {
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        /* leave as-is; schema gate will report it */
+      }
+      return value;
+    }
+    if (Array.isArray(value) && s.items) {
+      return value.map((v) => coerceToSchema(v, s.items));
+    }
+  }
+  return value;
+}
+
 // ── per-item gates ─────────────────────────────────────────────────────
 
 export function runItemGates(args: {

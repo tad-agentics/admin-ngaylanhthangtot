@@ -231,9 +231,23 @@ Deno.serve(async (req) => {
       }
       const note = typeof body.note === "string" ? body.note.trim() : null;
       const { data: item, error: gErr } = await admin
-        .from("prose_items").select("id, status").eq("id", itemId).single();
+        .from("prose_items").select("id, status, validation").eq("id", itemId).single();
       if (gErr || !item) throw new Error("Item không tồn tại");
       if (item.status === "published") throw new Error("Item đã published — bất biến");
+      // A failing 'fail'-severity gate means the output is structurally broken
+      // (the site build would reject it) — approving must be impossible, not
+      // just discouraged. Regen or edit first; edits re-run the gates.
+      if (verdict === "approve") {
+        const hardFails = ((item.validation ?? []) as GateResult[])
+          .filter((g) => !g.ok && g.severity === "fail");
+        if (hardFails.length) {
+          throw new Error(
+            `Không thể duyệt: item chưa qua gate ${
+              hardFails.map((g) => `[${g.gate}] ${g.detail}`).join("; ")
+            } — hãy Regen hoặc sửa tay trước.`,
+          );
+        }
+      }
       const { data, error } = await admin.from("prose_items").update({
         status: verdict === "approve" ? "approved" : "rejected",
         reviewer: userId,

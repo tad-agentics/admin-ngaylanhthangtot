@@ -64,7 +64,7 @@ const PRICES: Record<string, { input: number; output: number }> = {
 };
 
 /**
- * Sonnet 5 / Opus 4.7+ / Fable removed sampling params — sending temperature
+ * Sonnet 5 / Opus 4.7+ removed sampling params — sending temperature
  * returns a 400 ("`temperature` is deprecated for this model"). Only models on
  * this allowlist still accept it; everything else omits it and relies on
  * prompt-driven variety (the voice charter + phrase_frequency/similarity gates).
@@ -72,6 +72,29 @@ const PRICES: Record<string, { input: number; output: number }> = {
 const TEMPERATURE_SUPPORTED = [/^claude-haiku-4-5/u, /^claude-sonnet-4-/u, /^claude-opus-4-[0-6]/u];
 function supportsTemperature(model: string): boolean {
   return TEMPERATURE_SUPPORTED.some((re) => re.test(model));
+}
+
+/**
+ * Strict tool use guarantees the tool input validates against the schema
+ * server-side (kills stringified arrays / <item>-tag malformations), but the
+ * strict validator rejects numeric/length/array-count constraints — strip
+ * them for the API call; our own schema + length gates still enforce them.
+ */
+const STRICT_UNSUPPORTED = new Set([
+  "minItems", "maxItems", "minLength", "maxLength", "pattern",
+  "minimum", "maximum", "multipleOf",
+]);
+export function stripForStrict(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(stripForStrict);
+  if (schema && typeof schema === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(schema as Record<string, unknown>)) {
+      if (STRICT_UNSUPPORTED.has(k)) continue;
+      out[k] = stripForStrict(v);
+    }
+    return out;
+  }
+  return schema;
 }
 export function priceOf(model: string): { input: number; output: number } {
   return PRICES[model] ?? { input: 3, output: 15 };
@@ -115,7 +138,8 @@ export async function callAnthropic(
         {
           name: TOOL_NAME,
           description: "Trả về prose đã viết, đúng schema.",
-          input_schema: t.output_schema,
+          input_schema: stripForStrict(t.output_schema),
+          strict: true,
         },
       ],
       tool_choice: { type: "tool", name: TOOL_NAME },
@@ -150,7 +174,12 @@ export async function countTokens(t: ProseTemplate, inputData: unknown): Promise
       system: t.system_prompt,
       messages: buildMessages(t, inputData),
       tools: [
-        { name: TOOL_NAME, description: "Trả về prose đã viết.", input_schema: t.output_schema },
+        {
+          name: TOOL_NAME,
+          description: "Trả về prose đã viết.",
+          input_schema: stripForStrict(t.output_schema),
+          strict: true,
+        },
       ],
     }),
   });

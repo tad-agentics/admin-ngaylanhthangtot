@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       }
       if (rawItems.length > 200) throw new Error("Realtime mode giới hạn 200 item/job (Phase A)");
       const { data: t, error: tErr } = await admin
-        .from("prose_templates").select("id, key").eq("id", templateId).single();
+        .from("prose_templates").select("id, key, version").eq("id", templateId).single();
       if (tErr || !t) throw new Error("Template không tồn tại");
 
       const seen = new Set<string>();
@@ -155,19 +155,22 @@ Deno.serve(async (req) => {
       }).select().single();
       if (jErr) throw jErr;
 
-      // unique(template_key, item_key, data_hash) is the cross-job cache:
-      // rows that already exist (same data) are skipped, not re-generated.
+      // unique(template_key, template_version, item_key, data_hash) is the
+      // cross-job cache: rows that already exist under the SAME template
+      // version (same data) are skipped, not re-generated. A new template
+      // version regenerates everything.
       const { error: iErr, data: inserted } = await admin.from("prose_items")
         .upsert(
           items.map((it) => ({
             job_id: job.id,
             template_key: t.key,
+            template_version: t.version,
             item_key: it.item_key,
             data_hash: it.hash,
             input_data: it.data,
             status: "pending",
           })),
-          { onConflict: "template_key,item_key,data_hash", ignoreDuplicates: true },
+          { onConflict: "template_key,template_version,item_key,data_hash", ignoreDuplicates: true },
         )
         .select("id");
       if (iErr) throw iErr;

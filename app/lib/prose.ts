@@ -196,6 +196,12 @@ export function testTemplate(body: {
 
 // ── display helpers ──────────────────────────────────────────────────
 
+/** Models the engine prices correctly (see _shared/prose-prompt.ts PRICES). */
+export const MODEL_OPTIONS: Array<{ id: string; label: string }> = [
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5 — $3 vào / $15 ra mỗi MTok" },
+  { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — $1 vào / $5 ra mỗi MTok" },
+];
+
 export const ITEM_STATUS_LABEL: Record<ProseItemStatus, string> = {
   pending: "Chờ chạy",
   generated: "Đã sinh",

@@ -11,6 +11,7 @@ import { useAuth } from "~/lib/auth";
 import {
   createTemplate,
   fetchTemplates,
+  MODEL_OPTIONS,
   testTemplate,
   type ProseTemplate,
   type TestResult,
@@ -259,7 +260,21 @@ export default function ProseTemplatesRoute() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium">Model</label>
-                  <input value={draft.model} onChange={(e) => set("model", e.target.value)} className={cn(FIELD, "font-mono")} />
+                  <select
+                    value={draft.model}
+                    onChange={(e) => set("model", e.target.value)}
+                    className={FIELD}
+                  >
+                    {/* Keep an unknown/legacy value selectable instead of silently swapping it. */}
+                    {MODEL_OPTIONS.some((m) => m.id === draft.model) ? null : (
+                      <option value={draft.model}>{draft.model}</option>
+                    )}
+                    {MODEL_OPTIONS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

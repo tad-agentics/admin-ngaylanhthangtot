@@ -62,6 +62,17 @@ const PRICES: Record<string, { input: number; output: number }> = {
   "claude-sonnet-5": { input: 3, output: 15 },
   "claude-haiku-4-5-20251001": { input: 1, output: 5 },
 };
+
+/**
+ * Sonnet 5 / Opus 4.7+ / Fable removed sampling params — sending temperature
+ * returns a 400 ("`temperature` is deprecated for this model"). Only models on
+ * this allowlist still accept it; everything else omits it and relies on
+ * prompt-driven variety (the voice charter + phrase_frequency/similarity gates).
+ */
+const TEMPERATURE_SUPPORTED = [/^claude-haiku-4-5/u, /^claude-sonnet-4-/u, /^claude-opus-4-[0-6]/u];
+function supportsTemperature(model: string): boolean {
+  return TEMPERATURE_SUPPORTED.some((re) => re.test(model));
+}
 export function priceOf(model: string): { input: number; output: number } {
   return PRICES[model] ?? { input: 3, output: 15 };
 }
@@ -97,7 +108,7 @@ export async function callAnthropic(
     body: JSON.stringify({
       model: t.model,
       max_tokens: t.max_tokens,
-      temperature: t.temperature,
+      ...(supportsTemperature(t.model) ? { temperature: t.temperature } : {}),
       system: t.system_prompt,
       messages,
       tools: [

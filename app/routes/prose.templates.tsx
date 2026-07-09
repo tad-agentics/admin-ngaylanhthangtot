@@ -278,7 +278,12 @@ export default function ProseTemplatesRoute() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium">Temperature</label>
+                    <label className="block text-xs font-medium">
+                      Temperature{" "}
+                      <span className="font-normal text-admin-text-secondary">
+                        (chỉ model đời cũ, vd Haiku 4.5 — Sonnet 5 bỏ qua)
+                      </span>
+                    </label>
                     <input value={draft.temperature} onChange={(e) => set("temperature", e.target.value)} className={FIELD} />
                   </div>
                   <div>

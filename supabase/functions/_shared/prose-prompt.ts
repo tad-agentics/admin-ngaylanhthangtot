@@ -96,6 +96,57 @@ export function stripForStrict(schema: unknown): unknown {
   }
   return schema;
 }
+
+/**
+ * The constraints stripped for strict mode still have to reach the model
+ * somehow — otherwise it can't know "phanTich: max 2 items" and our own
+ * schema/length gates fail everything (the exact failure of the first
+ * August run). Walk the ORIGINAL schema and render them as prompt text.
+ */
+function collectConstraints(schema: unknown, path: string, out: string[]): void {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return;
+  const s = schema as Record<string, unknown>;
+  const rules: string[] = [];
+  const minI = s.minItems as number | undefined;
+  const maxI = s.maxItems as number | undefined;
+  if (minI != null || maxI != null) {
+    rules.push(
+      minI != null && minI === maxI
+        ? `mảng có ĐÚNG ${minI} phần tử`
+        : `mảng có ${minI ?? 0}–${maxI ?? "∞"} phần tử`,
+    );
+  }
+  const minL = s.minLength as number | undefined;
+  const maxL = s.maxLength as number | undefined;
+  if (minL != null || maxL != null) {
+    rules.push(`chuỗi dài ${minL ?? 0}–${maxL ?? "∞"} ký tự`);
+  }
+  if (rules.length) out.push(`- ${path || "$"}: ${rules.join("; ")}`);
+  if (s.properties && typeof s.properties === "object") {
+    for (const [k, v] of Object.entries(s.properties as Record<string, unknown>)) {
+      collectConstraints(v, path ? `${path}.${k}` : k, out);
+    }
+  }
+  if (s.items) collectConstraints(s.items, `${path}[]`, out);
+}
+export function constraintNotes(
+  schema: unknown,
+  guards?: Record<string, unknown>,
+): string {
+  const out: string[] = [];
+  collectConstraints(schema, "", out);
+  // guards.length rules ("phanTich.0": {min,max}) are enforced post-gen; the
+  // model needs to hear them up front too.
+  const lengthRules = (guards?.length ?? {}) as Record<
+    string,
+    { min?: number; max?: number }
+  >;
+  for (const [path, rule] of Object.entries(lengthRules)) {
+    out.push(`- ${path}: chuỗi dài ${rule.min ?? 0}–${rule.max ?? "∞"} ký tự`);
+  }
+  if (!out.length) return "";
+  return `\n\nRÀNG BUỘC BẮT BUỘC về số phần tử và độ dài (tuân thủ tuyệt đối):\n${out.join("\n")}`;
+}
 export function priceOf(model: string): { input: number; output: number } {
   return PRICES[model] ?? { input: 3, output: 15 };
 }
@@ -132,7 +183,7 @@ export async function callAnthropic(
       model: t.model,
       max_tokens: t.max_tokens,
       ...(supportsTemperature(t.model) ? { temperature: t.temperature } : {}),
-      system: t.system_prompt,
+      system: t.system_prompt + constraintNotes(t.output_schema, t.guards),
       messages,
       tools: [
         {
@@ -171,7 +222,7 @@ export async function countTokens(t: ProseTemplate, inputData: unknown): Promise
     },
     body: JSON.stringify({
       model: t.model,
-      system: t.system_prompt,
+      system: t.system_prompt + constraintNotes(t.output_schema, t.guards),
       messages: buildMessages(t, inputData),
       tools: [
         {

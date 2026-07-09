@@ -165,6 +165,17 @@ export default function ProseTemplatesRoute() {
       setTestError("Dữ liệu mẫu không phải JSON hợp lệ");
       return;
     }
+    // Accept what people actually paste from the job-input files:
+    // a whole array → first item; an {item_key, data} wrapper → inner data.
+    if (Array.isArray(data)) data = data[0];
+    if (
+      data &&
+      typeof data === "object" &&
+      "data" in data &&
+      "item_key" in data
+    ) {
+      data = (data as { data: unknown }).data;
+    }
     try {
       testMutation.mutate({ template: parseDraft(draft), data });
     } catch (e) {
